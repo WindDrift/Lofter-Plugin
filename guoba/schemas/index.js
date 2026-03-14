@@ -15,9 +15,24 @@ export function getConfigData () {
 }
 
 export function setConfigData (data, { Result }) {
-  const lofterConfig = data.lofter
-  
-  // Validate or process config if needed
+  let lofterConfig = data.lofter
+
+  // Compatibility handling: if data.lofter is undefined, try to match flat structure
+  if (!lofterConfig) {
+    lofterConfig = {}
+    let hasConfig = false
+    for (const key in data) {
+      if (key.startsWith('lofter.')) {
+        lofterConfig[key.replace('lofter.', '')] = data[key]
+        hasConfig = true
+      }
+    }
+    
+    // If still no config found, check if data itself is the config (no prefix)
+    if (!hasConfig && data.autoParse !== undefined) {
+      lofterConfig = data
+    }
+  }
   
   config.set('lofter', lofterConfig)
   

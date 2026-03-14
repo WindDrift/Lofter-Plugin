@@ -67,10 +67,13 @@ export default class Config {
     }
     
     try {
+      if (data === undefined) {
+        throw new Error('Data is undefined')
+      }
       fs.writeFileSync(file, YAML.stringify(data), 'utf8')
       return true
     } catch (error) {
-      console.error(`[${plugin}] Save config error: ${error}`)
+      console.error(`[${plugin}] Save config error for ${name}: ${error}`)
       return false
     }
   }
