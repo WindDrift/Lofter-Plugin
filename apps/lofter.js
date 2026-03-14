@@ -128,7 +128,9 @@ export class LofterPlugin extends plugin {
           const extMatch = imgUrl.match(/\.(jpg|jpeg|png|gif|webp)/i)
           const ext = extMatch ? extMatch[1] : 'jpg'
           
-          let fileName = `${blogName}-${publishDateStr}`
+          // Sanitize filename
+          const safeBlogName = blogName.replace(/[\\/:*?"<>|]/g, '_')
+          let fileName = `${safeBlogName}-${publishDateStr}`
           if (photoLinks.length > 1) {
             fileName += `-${i + 1}`
           }
@@ -147,6 +149,15 @@ export class LofterPlugin extends plugin {
             
             await streamPipeline(imgRes.body, fs.createWriteStream(filePath))
             
+            // Verify file exists and is not empty
+            if (!fs.existsSync(filePath)) {
+              throw new Error('File download failed (file not found)')
+            }
+            const stats = fs.statSync(filePath)
+            if (stats.size === 0) {
+              throw new Error('File download failed (empty file)')
+            }
+
             // Send as file
             if (e.isGroup) {
               await e.group.sendFile(filePath, fileName)
