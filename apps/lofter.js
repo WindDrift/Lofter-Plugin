@@ -4,7 +4,6 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { pipeline } from 'node:stream'
 import { promisify } from 'node:util'
-import { segment } from 'oicq'
 
 const streamPipeline = promisify(pipeline)
 
@@ -172,8 +171,15 @@ export class LofterPlugin extends plugin {
                 await e.reply(segment.image(filePath))
               }
             } catch (sendErr) {
-              logger.error(`[Lofter解析] sendFile 失败，尝试以图片形式发送: ${sendErr.message}`)
-              await e.reply(segment.image(filePath))
+              logger.error(`[Lofter解析] sendFile 失败，尝试以 Buffer 形式发送图片: ${sendErr.message}`)
+              try {
+                // Read file to buffer to bypass path issues
+                const fileBuffer = fs.readFileSync(filePath)
+                await e.reply(segment.image(fileBuffer))
+              } catch (bufferErr) {
+                logger.error(`[Lofter解析] Buffer 发送失败: ${bufferErr.message}`)
+                await e.reply(`图片 ${fileName} 发送失败。`)
+              }
             }
           } catch (err) {
             logger.error(`[Lofter解析] 下载或发送图片失败: ${imgUrl}`, err)
