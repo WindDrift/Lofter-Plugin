@@ -122,10 +122,14 @@ export class LofterPlugin extends plugin {
         }
 
         for (let i = 0; i < photoLinks.length; i++) {
-          const imgUrl = photoLinks[i].raw || photoLinks[i].orign
+          // Use 'orign' first, then 'raw' as fallback. 'raw' often points to nos.netease.com which can return 403.
+          // 'orign' usually points to imglf3/4/5.lf127.net which is more reliable.
+          let imgUrl = photoLinks[i].orign || photoLinks[i].raw
           if (!imgUrl) continue
 
-          const extMatch = imgUrl.match(/\.(jpg|jpeg|png|gif|webp)/i)
+          // Remove query parameters to get clean extension
+          const cleanUrl = imgUrl.split('?')[0]
+          const extMatch = cleanUrl.match(/\.(jpg|jpeg|png|gif|webp)/i)
           const ext = extMatch ? extMatch[1] : 'jpg'
           
           // Sanitize filename
