@@ -4,6 +4,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { pipeline } from 'node:stream'
 import { promisify } from 'node:util'
+import { segment } from 'oicq'
 
 const streamPipeline = promisify(pipeline)
 
@@ -161,12 +162,17 @@ export class LofterPlugin extends plugin {
             logger.info(`[Lofter解析] 图片下载成功: ${filePath}, 大小: ${stats.size} bytes`)
 
             // Send as file
-            if (e.isGroup) {
-              await e.group.sendFile(filePath, fileName)
-            } else if (e.friend) {
-              await e.friend.sendFile(filePath, fileName)
-            } else {
-              // fallback to sending as image if sendFile is not supported
+            try {
+              if (e.isGroup) {
+                await e.group.sendFile(filePath, fileName)
+              } else if (e.friend) {
+                await e.friend.sendFile(filePath, fileName)
+              } else {
+                // fallback to sending as image if sendFile is not supported
+                await e.reply(segment.image(filePath))
+              }
+            } catch (sendErr) {
+              logger.error(`[Lofter解析] sendFile 失败，尝试以图片形式发送: ${sendErr.message}`)
               await e.reply(segment.image(filePath))
             }
           } catch (err) {
