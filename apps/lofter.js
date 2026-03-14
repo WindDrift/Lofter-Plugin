@@ -157,6 +157,8 @@ export class LofterPlugin extends plugin {
             if (stats.size === 0) {
               throw new Error('File download failed (empty file)')
             }
+            
+            logger.info(`[Lofter解析] 图片下载成功: ${filePath}, 大小: ${stats.size} bytes`)
 
             // Send as file
             if (e.isGroup) {
