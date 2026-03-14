@@ -134,8 +134,11 @@ export class LofterPlugin extends plugin {
           let imgUrl = photoLinks[i].orign || photoLinks[i].raw
           if (!imgUrl) continue
 
+          // 去掉问号后面的参数，获取原图
+          imgUrl = imgUrl.split('?')[0]
+
           // Remove query parameters to get clean extension
-          const cleanUrl = imgUrl.split('?')[0]
+          const cleanUrl = imgUrl
           const extMatch = cleanUrl.match(/\.(jpg|jpeg|png|gif|webp)/i)
           const ext = extMatch ? extMatch[1] : 'jpg'
           
