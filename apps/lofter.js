@@ -118,7 +118,8 @@ export class LofterPlugin extends plugin {
       replyText += `互动数据：\n`
       replyText += `回复: ${responseCount} | 点赞: ${favoriteCount} | 推荐: ${shareCount} | 收藏: ${subscribeCount} | 热度: ${hotCount}`
 
-      await e.reply(replyText)
+      let msgList = []
+      msgList.push(replyText)
 
       // Handle images
       const photoLinks = postView.photoPostView?.photoLinks || []
@@ -174,37 +175,87 @@ export class LofterPlugin extends plugin {
             
             logger.info(`[Lofter解析] 图片下载成功: ${filePath}, 大小: ${stats.size} bytes`)
 
-            // Send as file
-            try {
-              if (e.isGroup) {
-                await e.group.sendFile(filePath, fileName)
-              } else if (e.friend) {
-                await e.friend.sendFile(filePath, fileName)
-              } else {
-                // fallback to sending as image if sendFile is not supported
-                await e.reply(segment.image(filePath))
-              }
-            } catch (sendErr) {
-              logger.error(`[Lofter解析] sendFile 失败，尝试以 Buffer 形式发送图片: ${sendErr.message}`)
+            if (config.sendMode === 'forward') {
+              msgList.push(segment.image(filePath))
+            } else {
+              // Send as file or image based on config
               try {
-                // Read file to buffer to bypass path issues
-                const fileBuffer = fs.readFileSync(filePath)
-                await e.reply(segment.image(fileBuffer))
-              } catch (bufferErr) {
-                logger.error(`[Lofter解析] Buffer 发送失败: ${bufferErr.message}`)
-                await e.reply(`图片 ${fileName} 发送失败。`)
+                if (config.sendOriginal) {
+                  if (e.isGroup) {
+                    await e.group.sendFile(filePath, fileName)
+                  } else if (e.friend) {
+                    await e.friend.sendFile(filePath, fileName)
+                  } else {
+                    await e.reply(segment.image(filePath))
+                  }
+                } else {
+                  await e.reply(segment.image(filePath))
+                }
+              } catch (sendErr) {
+                logger.error(`[Lofter解析] 发送失败，尝试以 Buffer 形式发送图片: ${sendErr.message}`)
+                try {
+                  const fileBuffer = fs.readFileSync(filePath)
+                  await e.reply(segment.image(fileBuffer))
+                } catch (bufferErr) {
+                  logger.error(`[Lofter解析] Buffer 发送失败: ${bufferErr.message}`)
+                  await e.reply(`图片 ${fileName} 发送失败。`)
+                }
               }
             }
           } catch (err) {
             logger.error(`[Lofter解析] 下载或发送图片失败: ${imgUrl}`, err)
-            await e.reply(`图片 ${fileName} 发送失败。`)
+            if (config.sendMode !== 'forward') {
+              await e.reply(`图片 ${fileName} 发送失败。`)
+            } else {
+              msgList.push(`图片 ${fileName} 下载失败。`)
+            }
           } finally {
-            // Cleanup
-            if (fs.existsSync(filePath)) {
-              fs.unlinkSync(filePath)
+            // Do not delete file here if we are going to send it in forward message later
+            // We will clean up the temp directory periodically or after sending forward message
+            if (config.sendMode !== 'forward') {
+              if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath)
+              }
             }
           }
         }
+      }
+
+      if (config.sendMode === 'forward') {
+        try {
+          const forwardMsg = await this.makeForwardMsg(e, msgList, 'Lofter解析结果')
+          if (forwardMsg) {
+            await e.reply(forwardMsg)
+          } else {
+            // Fallback to sending one by one
+            for (let msg of msgList) {
+              await e.reply(msg)
+            }
+          }
+        } catch (err) {
+          logger.error(`[Lofter解析] 发送合并转发失败:`, err)
+          await e.reply('发送合并转发失败，尝试普通发送。')
+          for (let msg of msgList) {
+            await e.reply(msg)
+          }
+        } finally {
+          // Cleanup temp files if forward mode
+          if (photoLinks.length > 0) {
+            const tempDir = path.join(process.cwd(), 'temp', 'lofter')
+            if (fs.existsSync(tempDir)) {
+              fs.readdirSync(tempDir).forEach(file => {
+                if (file.startsWith(blogName.replace(/[\\/:*?"<>|]/g, '_'))) {
+                  try {
+                    fs.unlinkSync(path.join(tempDir, file))
+                  } catch (e) {}
+                }
+              })
+            }
+          }
+        }
+      } else {
+        // Send text first if not forward mode
+        await e.reply(replyText)
       }
 
     } catch (err) {
@@ -247,5 +298,27 @@ export class LofterPlugin extends plugin {
     const min = String(date.getMinutes()).padStart(2, '0')
     const s = String(date.getSeconds()).padStart(2, '0')
     return `${y}-${m}-${d} ${h}:${min}:${s}`
+  }
+
+  async makeForwardMsg(e, msgList, title = 'Lofter解析结果') {
+    const forwardMsg = []
+    const bot = e.bot || global.Bot || {}
+    for (let msg of msgList) {
+      forwardMsg.push({
+        user_id: bot.uin || 123456,
+        nickname: bot.nickname || 'Bot',
+        message: msg
+      })
+    }
+
+    if (e.isGroup && e.group?.makeForwardMsg) {
+      return await e.group.makeForwardMsg(forwardMsg)
+    } else if (e.friend?.makeForwardMsg) {
+      return await e.friend.makeForwardMsg(forwardMsg)
+    } else if (bot.makeForwardMsg) {
+      return await bot.makeForwardMsg(forwardMsg)
+    } else {
+      return null
+    }
   }
 }
