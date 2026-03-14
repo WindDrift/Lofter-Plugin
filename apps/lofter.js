@@ -106,23 +106,51 @@ export class LofterPlugin extends plugin {
       const publishDateStr = this.formatDate(publishTime)
       const publishDateTimeStr = this.formatDateTime(publishTime)
 
-      let replyText = `博主：${nickname} (${blogName})\n`
-      replyText += `用户ID：${blogId}\n`
-      replyText += `标题：${title}\n`
-      replyText += `发布时间：${publishDateTimeStr}\n`
-      replyText += `博文ID：${postId}\n`
-      replyText += `内容：\n${digest}\n`
-      if (config.showTags) {
-        replyText += `标签：${tags}\n`
-      }
-      replyText += `互动数据：\n`
-      replyText += `回复: ${responseCount} | 点赞: ${favoriteCount} | 推荐: ${shareCount} | 收藏: ${subscribeCount} | 热度: ${hotCount}`
+      let textMessages = []
 
-      let msgList = []
-      msgList.push(replyText)
+      // 1. 博主信息
+      let bloggerInfo = `${nickname}\n${blogName}.lofter.com\nID：${blogId}`
+      textMessages.push(bloggerInfo)
+
+      // 2. 博文信息
+      let postInfo = `博文链接：${url}\n发布时间：${publishDateTimeStr}\nID：${postId}`
+      if (config.showTags) {
+        postInfo += `\n标签：${tags}`
+      }
+      textMessages.push(postInfo)
+
+      // 3. 标题和内容
+      let contentInfo = `${title}\n${digest}`
+      textMessages.push(contentInfo)
+
+      // 4. 互动数据
+      let interactInfo = `回复: ${responseCount}\n点赞: ${favoriteCount}\n推荐: ${shareCount}\n收藏: ${subscribeCount}\n热度: ${hotCount}`
+      textMessages.push(interactInfo)
+
+      // 5. 原图链接
+      const photoLinks = postView.photoPostView?.photoLinks || []
+      if (photoLinks.length > 0) {
+        let imgLinksInfo = "原图链接："
+        photoLinks.forEach((link, index) => {
+           let imgUrl = link.orign || link.raw
+           if (imgUrl) {
+             imgUrl = imgUrl.split('?')[0]
+             imgLinksInfo += `\n图${index + 1}：${imgUrl}`
+           }
+        })
+        textMessages.push(imgLinksInfo)
+      }
+
+      // 如果不是合并转发模式，先发送文本消息
+      if (config.sendMode !== 'forward') {
+        for (let msg of textMessages) {
+          await e.reply(msg)
+        }
+      }
+
+      let msgList = [...textMessages]
 
       // Handle images
-      const photoLinks = postView.photoPostView?.photoLinks || []
       if (photoLinks.length > 0) {
         const tempDir = path.join(process.cwd(), 'temp', 'lofter')
         if (!fs.existsSync(tempDir)) {
@@ -253,9 +281,6 @@ export class LofterPlugin extends plugin {
             }
           }
         }
-      } else {
-        // Send text first if not forward mode
-        await e.reply(replyText)
       }
 
     } catch (err) {

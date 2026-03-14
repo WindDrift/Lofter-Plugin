@@ -6,9 +6,9 @@ autoParse: true
 sendOriginal: false
 
 # 消息发送方式
-# default: 默认（直接发送）
-# forward: 合并转发
-sendMode: default
+# forward: 合并转发（默认）
+# normal: 逐条发送
+sendMode: forward
 
 # 超时时间（秒）
 timeout: 30

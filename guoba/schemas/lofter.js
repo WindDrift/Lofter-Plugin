@@ -19,8 +19,8 @@ export default [
     component: 'Select',
     componentProps: {
       options: [
-        { label: '默认', value: 'default' },
-        { label: '合并转发', value: 'forward' }
+        { label: '合并转发', value: 'forward' },
+        { label: '逐条发送', value: 'normal' }
       ]
     }
   },
