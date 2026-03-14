@@ -1,13 +1,13 @@
 {
   "name": "lofter-plugin",
   "version": "1.0.0",
-  "description": "",
+  "description": "解析Lofter链接并发送图文",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "",
+  "author": "WindDrift",
   "license": "ISC",
   "dependencies": {
     "node-fetch": "^2.7.0"
