@@ -1,4 +1,5 @@
 import plugin from '../../../lib/plugins/plugin.js'
+import Config from '../components/Config.js'
 import fetch from 'node-fetch'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -24,6 +25,9 @@ export class LofterPlugin extends plugin {
   }
 
   async parseLofter(e) {
+    const config = new Config().getDefSet('lofter')
+    if (!config.autoParse) return false
+
     // Extract URL from message
     const urlMatch = e.msg.match(/(https?:\/\/[a-zA-Z0-9-]+\.lofter\.com\/post\/[a-zA-Z0-9_]+)/i)
     if (!urlMatch) return false
@@ -41,6 +45,7 @@ export class LofterPlugin extends plugin {
     try {
       const response = await fetch(url, {
         method: 'GET',
+        timeout: (config.timeout || 30) * 1000,
         headers: {
           'User-Agent': 'Mozilla/5.0 (Linux; Android 12; OnePlus 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36 Edg/119.0.0.0'
         }
@@ -107,7 +112,9 @@ export class LofterPlugin extends plugin {
       replyText += `发布时间：${publishDateTimeStr}\n`
       replyText += `博文ID：${postId}\n`
       replyText += `内容：\n${digest}\n`
-      replyText += `标签：${tags}\n`
+      if (config.showTags) {
+        replyText += `标签：${tags}\n`
+      }
       replyText += `互动数据：\n`
       replyText += `回复: ${responseCount} | 点赞: ${favoriteCount} | 推荐: ${shareCount} | 收藏: ${subscribeCount} | 热度: ${hotCount}`
 

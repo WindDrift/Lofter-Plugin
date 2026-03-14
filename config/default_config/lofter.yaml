@@ -1,0 +1,17 @@
+
+# 自动解析 Lofter 链接
+autoParse: true
+
+# 是否发送原图（可能会增加流量消耗）
+sendOriginal: false
+
+# 消息发送方式
+# default: 默认（直接发送）
+# forward: 合并转发
+sendMode: default
+
+# 超时时间（秒）
+timeout: 30
+
+# 是否显示标签
+showTags: true
