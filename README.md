@@ -1,6 +1,6 @@
 # Lofter-Plugin
 
-适用于 [Yunzai-Bot](https://github.com/Le-niao/Yunzai-Bot) v3 的 Lofter（乐乎）博文解析插件。
+适用于 [Yunzai-Bot](https://github.com/yoimiya-kokomi/Miao-Yunzai) v3 和 [TRSS-Yunzai](https://github.com/TimeRainStarSky/Yunzai) 的 Lofter 博文解析插件。
 
 当群员或好友发送包含 Lofter 博文链接的消息时，机器人会自动解析该博文的内容，并提取文字信息和图片发送。
 
@@ -17,7 +17,7 @@
 1. 进入 Yunzai-Bot 的 `plugins` 目录，克隆本仓库：
 ```bash
 cd plugins
-git clone https://github.com/你的用户名/Lofter-Plugin.git
+git clone https://github.com/WindDrift/Lofter-Plugin.git
 ```
 *(如果文件夹名称不是 `Lofter-Plugin`，请确保文件夹名称合法，建议保持默认或使用全小写字母)*
 
@@ -26,9 +26,8 @@ git clone https://github.com/你的用户名/Lofter-Plugin.git
 cd Lofter-Plugin
 npm install
 ```
-*(如果你的 Yunzai 根目录已经安装了 `node-fetch`，也可以跳过此步骤)*
 
-3. 重启 Yunzai-Bot 或对机器人发送 `#重启`，即可加载本插件。
+3. 重启 Yunzai-Bot 或对机器人发送 `#重启`。
 
 ## 🚀 使用方法
 
@@ -39,15 +38,25 @@ npm install
 
 **机器人回复示例：**
 > 博主：红叶北极贝 (hoyeee)
+
 > 用户ID：2010097219
+
 > 标题：觉得恋人很可爱是很正常的
+
 > 发布时间：2026-02-14 19:05:14
+
 > 博文ID：14181799888
+
 > 内容：
+
 > 不要绿叶/绿散发言🙏不要代入叶散任何一方🙏不要因为不喜欢所以在评论区辱骂我🙏上诉行为我都会拉黑删评🙏🙏🙏🙏
+
 > 标签：枫散, 原神
+
 > 互动数据：
+
 > 回复: 18 | 点赞: 2101 | 推荐: 344 | 收藏: 77 | 热度: 2522
+
 
 如果博文内含有图片，机器人随后会通过**文件**形式将所有图片发送出来，文件名为 `hoyeee-2026-02-14.jpg` 或带序号 `hoyeee-2026-02-14-1.jpg`。
 
@@ -58,4 +67,4 @@ npm install
 
 ## 📄 开源协议
 
-本项目使用 [ISC License](LICENSE) 开源。
+本项目使用 [GPL-3.0 License](LICENSE) 开源。
