@@ -251,7 +251,9 @@ export class LofterPlugin extends plugin {
 
       if (config.sendMode === 'forward') {
         try {
-          const forwardMsg = await this.makeForwardMsg(e, msgList, 'Lofter解析结果')
+          const forwardTitle = config.forwardTitle || 'Lofter解析结果'
+          const forwardNickname = config.forwardNickname || ''
+          const forwardMsg = await this.makeForwardMsg(e, msgList, forwardTitle, forwardNickname)
           if (forwardMsg) {
             await e.reply(forwardMsg)
           } else {
@@ -325,25 +327,36 @@ export class LofterPlugin extends plugin {
     return `${y}-${m}-${d} ${h}:${min}:${s}`
   }
 
-  async makeForwardMsg(e, msgList, title = 'Lofter解析结果') {
+  async makeForwardMsg(e, msgList, title = 'Lofter解析结果', nickname = '') {
     const forwardMsg = []
     const bot = e.bot || global.Bot || {}
     for (let msg of msgList) {
       forwardMsg.push({
         user_id: bot.uin || 123456,
-        nickname: bot.nickname || 'Bot',
+        nickname: nickname || bot.nickname || 'Bot',
         message: msg
       })
     }
 
+    let msgNode = null
     if (e.isGroup && e.group?.makeForwardMsg) {
-      return await e.group.makeForwardMsg(forwardMsg)
+      msgNode = await e.group.makeForwardMsg(forwardMsg)
     } else if (e.friend?.makeForwardMsg) {
-      return await e.friend.makeForwardMsg(forwardMsg)
+      msgNode = await e.friend.makeForwardMsg(forwardMsg)
     } else if (bot.makeForwardMsg) {
-      return await bot.makeForwardMsg(forwardMsg)
-    } else {
-      return null
+      msgNode = await bot.makeForwardMsg(forwardMsg)
     }
+
+    if (msgNode && msgNode.data && typeof msgNode.data === 'string') {
+      msgNode.data = msgNode.data
+        .replace(/<title color="#000000" size="34">转发的聊天记录<\/title>/g, `<title color="#000000" size="34">${title}</title>`)
+        .replace(/<title size="34" color="#000000" margin="15,0,15,0">群聊的聊天记录<\/title>/g, `<title size="34" color="#000000" margin="15,0,15,0">${title}</title>`)
+        .replace(/<title color="#777777" size="26">(.+?)<\/title>/g, '___')
+        .replace(/___/g, `<title color="#777777" size="26">${title}</title>`)
+        .replace(/brief="\[聊天记录\]"/g, `brief="[${title}]"`)
+        .replace(/brief="\[转发的聊天记录\]"/g, `brief="[${title}]"`)
+    }
+    
+    return msgNode
   }
 }

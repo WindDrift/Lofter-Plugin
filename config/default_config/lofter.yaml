@@ -10,6 +10,12 @@ sendOriginal: false
 # normal: 逐条发送
 sendMode: forward
 
+# 合并转发外显消息（标题）
+forwardTitle: 'Lofter解析结果'
+
+# 合并转发内部QQ名（昵称），为空时使用默认Bot名称
+forwardNickname: ''
+
 # 超时时间（秒）
 timeout: 30
 

@@ -25,6 +25,18 @@ export default [
     }
   },
   {
+    field: 'lofter.forwardTitle',
+    label: '转发标题',
+    bottomLabel: '合并转发模式下的外显消息标题',
+    component: 'Input'
+  },
+  {
+    field: 'lofter.forwardNickname',
+    label: '转发昵称',
+    bottomLabel: '合并转发模式下的内部发信人昵称（留空则默认Bot名称）',
+    component: 'Input'
+  },
+  {
     field: 'lofter.timeout',
     label: '超时时间',
     bottomLabel: '解析请求的超时时间（秒）',
