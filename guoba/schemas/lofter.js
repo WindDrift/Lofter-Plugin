@@ -25,6 +25,12 @@ export default [
     }
   },
   {
+    field: 'lofter.sendFirstImage',
+    label: '发送首图',
+    bottomLabel: '解析到有图片时，单独发第一张图到聊天（可做合并转发的预览）',
+    component: 'Switch'
+  },
+  {
     field: 'lofter.forwardTitle',
     label: '转发标题',
     bottomLabel: '合并转发模式下的外显消息标题',

@@ -10,6 +10,9 @@ sendOriginal: false
 # normal: 逐条发送
 sendMode: forward
 
+# 在解析到有图片时，单独发送第一张图片到聊天（常用于开启合并转发时预览）
+sendFirstImage: false
+
 # 合并转发外显消息（标题）
 forwardTitle: 'Lofter解析结果'
 

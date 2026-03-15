@@ -149,6 +149,7 @@ export class LofterPlugin extends plugin {
       }
 
       let msgList = [...textMessages]
+      let firstImagePath = null
 
       // Handle images
       if (photoLinks.length > 0) {
@@ -205,6 +206,9 @@ export class LofterPlugin extends plugin {
 
             if (config.sendMode === 'forward') {
               msgList.push(segment.image(filePath))
+              if (i === 0) {
+                firstImagePath = filePath
+              }
             } else {
               // Send as file or image based on config
               try {
@@ -260,6 +264,14 @@ export class LofterPlugin extends plugin {
             // Fallback to sending one by one
             for (let msg of msgList) {
               await e.reply(msg)
+            }
+          }
+
+          if (config.sendFirstImage && firstImagePath) {
+            try {
+              await e.reply(segment.image(firstImagePath))
+            } catch (firstImgErr) {
+              logger.error(`[Lofter解析] 发送首图失败: ${firstImgErr.message}`)
             }
           }
         } catch (err) {
