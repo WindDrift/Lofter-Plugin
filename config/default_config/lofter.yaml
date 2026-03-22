@@ -24,3 +24,9 @@ timeout: 30
 
 # 是否显示标签
 showTags: true
+
+# 开启图片大小限制
+enableImageSizeLimit: true
+
+# 图片大小限制（MB）
+imageSizeLimit: 8

@@ -57,5 +57,21 @@ export default [
     label: '显示标签',
     bottomLabel: '解析结果中是否显示标签',
     component: 'Switch'
+  },
+  {
+    field: 'lofter.enableImageSizeLimit',
+    label: '限制图片大小',
+    bottomLabel: '开启后对超出的图片发送链接而不发原图',
+    component: 'Switch'
+  },
+  {
+    field: 'lofter.imageSizeLimit',
+    label: '大小阈值(MB)',
+    bottomLabel: '触发图片大小限制的阈值（默认: 8MB）',
+    component: 'InputNumber',
+    componentProps: {
+      min: 1,
+      max: 100
+    }
   }
 ]

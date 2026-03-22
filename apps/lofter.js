@@ -150,6 +150,7 @@ export class LofterPlugin extends plugin {
 
       let msgList = [...textMessages]
       let firstImagePath = null
+      let isImageSizeLimitTriggered = false
 
       // Handle images
       if (photoLinks.length > 0) {
@@ -204,33 +205,51 @@ export class LofterPlugin extends plugin {
             
             logger.info(`[Lofter解析] 图片下载成功: ${filePath}, 大小: ${stats.size} bytes`)
 
-            if (config.sendMode === 'forward') {
-              msgList.push(segment.image(filePath))
-              if (i === 0) {
-                firstImagePath = filePath
+            let skipImage = false
+            const enableLimit = config.enableImageSizeLimit ?? true
+            const sizeLimitMB = config.imageSizeLimit ?? 8
+            const fileSizeMB = (stats.size / 1024 / 1024).toFixed(2)
+
+            if (enableLimit && fileSizeMB > sizeLimitMB) {
+              skipImage = true
+              isImageSizeLimitTriggered = true
+              const limitMsg = `图${i + 1}大小(${fileSizeMB}MB)超过设定限制(${sizeLimitMB}MB)，请点击链接获取图片：${imgUrl}`
+              if (config.sendMode === 'forward') {
+                msgList.push(limitMsg)
+              } else {
+                await e.reply(limitMsg)
               }
-            } else {
-              // Send as file or image based on config
-              try {
-                if (config.sendOriginal) {
-                  if (e.isGroup) {
-                    await e.group.sendFile(filePath, fileName)
-                  } else if (e.friend) {
-                    await e.friend.sendFile(filePath, fileName)
+            }
+
+            if (!skipImage) {
+              if (config.sendMode === 'forward') {
+                msgList.push(segment.image(filePath))
+                if (!firstImagePath) {
+                  firstImagePath = filePath
+                }
+              } else {
+                // Send as file or image based on config
+                try {
+                  if (config.sendOriginal) {
+                    if (e.isGroup) {
+                      await e.group.sendFile(filePath, fileName)
+                    } else if (e.friend) {
+                      await e.friend.sendFile(filePath, fileName)
+                    } else {
+                      await e.reply(segment.image(filePath))
+                    }
                   } else {
                     await e.reply(segment.image(filePath))
                   }
-                } else {
-                  await e.reply(segment.image(filePath))
-                }
-              } catch (sendErr) {
-                logger.error(`[Lofter解析] 发送失败，尝试以 Buffer 形式发送图片: ${sendErr.message}`)
-                try {
-                  const fileBuffer = fs.readFileSync(filePath)
-                  await e.reply(segment.image(fileBuffer))
-                } catch (bufferErr) {
-                  logger.error(`[Lofter解析] Buffer 发送失败: ${bufferErr.message}`)
-                  await e.reply(`图片 ${fileName} 发送失败。`)
+                } catch (sendErr) {
+                  logger.error(`[Lofter解析] 发送失败，尝试以 Buffer 形式发送图片: ${sendErr.message}`)
+                  try {
+                    const fileBuffer = fs.readFileSync(filePath)
+                    await e.reply(segment.image(fileBuffer))
+                  } catch (bufferErr) {
+                    logger.error(`[Lofter解析] Buffer 发送失败: ${bufferErr.message}`)
+                    await e.reply(`图片 ${fileName} 发送失败。`)
+                  }
                 }
               }
             }
@@ -250,6 +269,15 @@ export class LofterPlugin extends plugin {
               }
             }
           }
+        }
+      }
+
+      if (isImageSizeLimitTriggered) {
+        const tipMsg = '要调整/关闭图片大小限制功能，请前往锅巴面板配置。'
+        if (config.sendMode === 'forward') {
+          msgList.push(tipMsg)
+        } else {
+          await e.reply(tipMsg)
         }
       }
 
