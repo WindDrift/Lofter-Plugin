@@ -60,9 +60,9 @@ export default [
     label: '发送设置'
   },
   {
-    field: 'lofter.showTags',
-    label: '显示标签',
-    bottomLabel: '解析结果中是否显示文章标签',
+    field: 'lofter.tagLinks',
+    label: '标签链接',
+    bottomLabel: '解析结果中显示带链接的标签列表消息',
     component: 'Switch'
   },
   {

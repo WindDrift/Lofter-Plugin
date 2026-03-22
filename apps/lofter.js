@@ -150,14 +150,21 @@ export class LofterPlugin extends plugin {
       let bloggerInfo = `${nickname}\n${blogName}.lofter.com\nID：${blogId}`
       textMessages.push(bloggerInfo)
 
-      // 2. 组织博文的关键信息（原链接、发布日期时间、文章独立ID及标签）
+      // 2. 组织博文的关键信息（原链接、发布日期时间、文章独立ID）
       let postInfo = `博文链接：${url}\n发布时间：${publishDateTimeStr}\nID：${postId}`
-      if (config.showTags) {
-        postInfo += `\n标签：${tags}`
-      }
       textMessages.push(postInfo)
 
-      // 3. 组织博文的正文标题与清洗后的文本摘要内容
+      // 3. 组织标签链接信息（如果开启）
+      if (config.tagLinks && postView.tagList && postView.tagList.length > 0) {
+        let tagLinksMsg = '标签链接：'
+        postView.tagList.forEach(tag => {
+          const encodedTag = encodeURIComponent(tag)
+          tagLinksMsg += `\n#${tag}：https://www.lofter.com/tag/${encodedTag}`
+        })
+        textMessages.push(tagLinksMsg)
+      }
+
+      // 4. 组织博文的正文标题与清洗后的文本摘要内容
       // 单消息/多消息/图片模式处理逻辑
       const pureTextSendMode = config.pureTextSendMode || 'single'
       let imageModeImagePath = null
@@ -247,11 +254,11 @@ export class LofterPlugin extends plugin {
         textMessages.push(contentInfo)
       }
 
-      // 4. 汇总该篇博文的各项社区互动数据（回复、点赞、推荐、收藏及热度）
+      // 5. 汇总该篇博文的各项社区互动数据（回复、点赞、推荐、收藏及热度）
       let interactInfo = `回复: ${responseCount}\n点赞: ${favoriteCount}\n推荐: ${shareCount}\n收藏: ${subscribeCount}\n热度: ${hotCount}`
       textMessages.push(interactInfo)
 
-      // 5. 遍历并拼接出每一张包含内文照片的原图直链信息
+      // 6. 遍历并拼接出每一张包含内文照片的原图直链信息
       if (hasImages) {
         let imgLinksInfo = "原图链接："
         photoLinks.forEach((link, index) => {

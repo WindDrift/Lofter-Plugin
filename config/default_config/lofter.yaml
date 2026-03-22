@@ -53,8 +53,8 @@ forwardNickname: ''
 # 请求的超时时间（单位：秒）
 timeout: 30
 
-# 是否在解析结果中显示文章的标签（Tags）
-showTags: true
+# 是否开启标签链接功能（启用后标签将作为独立消息发送并附带 Lofter 链接）
+tagLinks: true
 
 # 开启图片大小限制，超出限制的图片将会被拦截或替换
 enableImageSizeLimit: true
