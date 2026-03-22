@@ -116,7 +116,7 @@ export class LofterPlugin extends plugin {
       digest = digest.replace(/&amp;/g, '&')
       digest = digest.replace(/&quot;/g, '"')
       digest = digest.replace(/&#39;/g, "'")
-      digest = digest.split('\n').map(line => line.trim()).filter(line => line).join('\n')
+      let paragraphs = digest.split('\n').map(line => line.trim()).filter(line => line)
 
       const tags = postView.tagList ? postView.tagList.join(', ') : '无'
       
@@ -143,8 +143,52 @@ export class LofterPlugin extends plugin {
       textMessages.push(postInfo)
 
       // 3. 组织博文的正文标题与清洗后的文本摘要内容
-      let contentInfo = `${title}\n${digest}`
-      textMessages.push(contentInfo)
+      // 单消息/多消息/图片模式处理逻辑
+      const pureTextSendMode = config.pureTextSendMode || 'single'
+      let imageModeImagePath = null
+
+      if (!hasImages && pureTextSendMode === 'image') {
+        try {
+          // 动态导入云崽的 puppeteer 支持
+          const puppeteer = (await import('../../../lib/puppeteer/puppeteer.js')).default
+          // 提取头像链接
+          const avatarUrl = blogInfo?.bigAvaImg || ''
+          
+          let renderData = {
+            tplFile: './plugins/Lofter-Plugin/resources/html/lofter/text-post.html',
+            plugin: 'Lofter-Plugin',
+            title: title,
+            nickname: nickname,
+            publishTime: publishDateTimeStr,
+            blogId: blogId,
+            avatar: avatarUrl,
+            paragraphs: paragraphs,
+            config: config
+          }
+          
+          let imgRes = await puppeteer.screenshot('lofter-plugin', renderData)
+          if (imgRes) {
+             textMessages.push(imgRes)
+             imageModeImagePath = imgRes
+          } else {
+             textMessages.push(`${title}\n\n${paragraphs.join('\n\n')}`)
+          }
+        } catch (e) {
+          logger.error('[Lofter解析] 生成纯文本长图失败：', e)
+          textMessages.push(`${title}\n\n${paragraphs.join('\n\n')}`) // 回退为文字模式
+        }
+      }
+      else if (!hasImages && pureTextSendMode === 'multi' && config.sendMode === 'forward') {
+        textMessages.push(title)
+        paragraphs.forEach(p => {
+          textMessages.push(p)
+        })
+      } else {
+        // 单消息模式，或含图状态，或未开启合并转发：遇换行加空白段落提升可读性
+        let digestToSend = paragraphs.join('\n\n')
+        let contentInfo = `${title}\n\n${digestToSend}`
+        textMessages.push(contentInfo)
+      }
 
       // 4. 汇总该篇博文的各项社区互动数据（回复、点赞、推荐、收藏及热度）
       let interactInfo = `回复: ${responseCount}\n点赞: ${favoriteCount}\n推荐: ${shareCount}\n收藏: ${subscribeCount}\n热度: ${hotCount}`
@@ -173,6 +217,11 @@ export class LofterPlugin extends plugin {
       let msgList = [...textMessages]
       let firstImagePath = null
       let isImageSizeLimitTriggered = false
+
+      // 额外：如果在图片模式下，本身就相当于生成了一张“伪原图”，把它置为首图使其支持配置的外部预览
+      if (imageModeImagePath) {
+         firstImagePath = imageModeImagePath
+      }
 
       // 核心业务逻辑：当文章包含图片时，开始处理图片的下载与发送流程
       if (hasImages) {

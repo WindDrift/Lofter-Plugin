@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="./text-post.css">
+  <style>
+    body {
+      background-color: {{config.imageBgColor || '#FFFFFF'}};
+      color: {{config.imageFontColor || '#333333'}};
+      font-size: {{config.imageFontSize || 16}}px;
+      line-height: {{config.imageLineHeight || 1.8}};
+      padding: {{config.imagePadding || 40}}px;
+    }
+    .title {
+      color: {{config.imageTitleColor || '#000000'}};
+      font-size: {{config.imageTitleSize || 22}}px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header" id="header-avatar">
+      {{if avatar}}
+      <img class="avatar" src="{{avatar}}" alt="avatar">
+      {{/if}}
+      <div class="author-info">
+        <div class="author-name">{{nickname}}</div>
+        <div class="post-date">{{publishTime}}</div>
+      </div>
+    </div>
+    <div class="title">{{title}}</div>
+    <div class="content">
+      {{each paragraphs p}}
+      <p>{{p}}</p>
+      {{/each}}
+    </div>
+    <div class="footer">
+      Lofter解析 - ID: {{blogId}}
+    </div>
+  </div>
+</body>
+</html>

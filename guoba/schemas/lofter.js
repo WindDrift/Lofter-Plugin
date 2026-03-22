@@ -25,6 +25,60 @@ export default [
     }
   },
   {
+    field: 'lofter.pureTextSendMode',
+    label: '纯文发送模式',
+    bottomLabel: '无图博文的纯文本分段组织方式',
+    component: 'Select',
+    componentProps: {
+      options: [
+        { label: '单消息 (每段空一行)', value: 'single' },
+        { label: '多消息 (每段拆分一条，限合并转发)', value: 'multi' },
+        { label: '图片模式 (转为渲染长图)', value: 'image' }
+      ]
+    }
+  },
+  {
+    field: 'lofter.imageBgColor',
+    label: '图片背景色',
+    bottomLabel: '图片模式的全局背景颜色 (HEX码等)',
+    component: 'Input',
+  },
+  {
+    field: 'lofter.imageFontColor',
+    label: '正文字体颜色',
+    bottomLabel: '图片模式中正文文字的颜色',
+    component: 'Input',
+  },
+  {
+    field: 'lofter.imageFontSize',
+    label: '正文基础字号',
+    bottomLabel: '单位 px，默认 16',
+    component: 'InputNumber',
+  },
+  {
+    field: 'lofter.imageLineHeight',
+    label: '正文行高',
+    bottomLabel: '数字，如 1.8 控制行间距',
+    component: 'InputNumber',
+  },
+  {
+    field: 'lofter.imageTitleColor',
+    label: '标题颜色',
+    component: 'Input',
+  },
+  {
+    field: 'lofter.imageTitleSize',
+    label: '标题字号',
+    bottomLabel: '单位 px，默认 22',
+    component: 'InputNumber',
+  },
+  {
+    field: 'lofter.imagePadding',
+    label: '全局内边距',
+    bottomLabel: '控制边缘留白 (默认 40px)',
+    component: 'InputNumber',
+  },
+  {
     field: 'lofter.sendFirstImage',
     label: '发送首图',
     bottomLabel: '解析到有图片时，单独发第一张图到聊天（可做合并转发的预览）',

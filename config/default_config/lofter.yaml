@@ -10,6 +10,28 @@ sendOriginal: false
 # normal: 逐条发送（将解析出的图片和文本逐条发送至聊天内容）
 sendMode: forward
 
+# 无图博文纯文本的发送模式
+# single: 单消息发送（每个自然段间空一行，提升可读性）
+# multi: 多消息发送（每遇到一个换行分割为一条新消息，仅在合并转发模式下有效）
+# image: 图片模式（将全文渲染为长图发送）
+pureTextSendMode: single
+
+# === 图片模式专属配置 ===
+# 图片模式背景色
+imageBgColor: '#FFFFFF'
+# 图片模式正文字体颜色
+imageFontColor: '#333333'
+# 图片模式正文基础字号(px)
+imageFontSize: 16
+# 图片模式正文行高
+imageLineHeight: 1.8
+# 图片模式标题颜色
+imageTitleColor: '#000000'
+# 图片模式标题字号(px)
+imageTitleSize: 22
+# 图片模式整体内边距(px)
+imagePadding: 40
+
 # 在解析到有图片时，单独发送第一张图片到聊天（常用于开启合并转发时进行前置预览）
 sendFirstImage: false
 
