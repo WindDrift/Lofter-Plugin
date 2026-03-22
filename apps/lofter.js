@@ -205,11 +205,11 @@ export class LofterPlugin extends plugin {
               }
             }
             
-            // 修正：统一使用 'lofter-plugin' 作为 name，确保 Yunzai 渲染器能正确触发目录创建逻辑
-            let imgRes = await puppeteer.screenshot('lofter-plugin', renderData)
+            let imgRes = await puppeteer.render('lofter-plugin', renderData)
             if (imgRes) {
-               textMessages.push(imgRes)
-               if (i === 0) imageModeImagePath = imgRes
+               let imgMsg = segment.image(imgRes)
+               textMessages.push(imgMsg)
+               if (i === 0) imageModeImagePath = imgRes // 存储 Buffer 而非 Segment 对象
             } else if (i === 0) {
                textMessages.push(`${title}\n\n${paragraphs.join('\n\n')}`)
                break
