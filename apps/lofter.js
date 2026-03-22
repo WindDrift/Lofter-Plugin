@@ -154,6 +154,9 @@ export class LofterPlugin extends plugin {
           // 提取头像链接
           const avatarUrl = blogInfo?.bigAvaImg || ''
           
+          const deviceScale = config.imageDeviceScale || 2
+          const imageWidth = config.imageWidth || 800
+
           let renderData = {
             tplFile: './plugins/Lofter-Plugin/resources/html/lofter/text-post.html',
             plugin: 'Lofter-Plugin',
@@ -167,9 +170,9 @@ export class LofterPlugin extends plugin {
             // 截图尺寸与清晰度
             pageGotoParams: { waitUntil: 'networkidle0' },
             viewPort: {
-              width: config.imageWidth || 800,
+              width: imageWidth * deviceScale,
               height: 100,
-              deviceScaleFactor: config.imageDeviceScale || 2
+              deviceScaleFactor: deviceScale
             }
           }
           
