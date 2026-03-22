@@ -1,15 +1,15 @@
 // 详细定义并且导出了锅巴（Guoba）可视化控制面板中每一项独立配置的表单组件模型（如开关、下拉选择、数字输入框等）及其具体描述说明
 export default [
+
+  // ===================== 通用设置 =====================
+  {
+    component: 'Divider',
+    label: '通用设置'
+  },
   {
     field: 'lofter.autoParse',
     label: '自动解析',
     bottomLabel: '检测到Lofter链接时自动解析',
-    component: 'Switch'
-  },
-  {
-    field: 'lofter.sendOriginal',
-    label: '发送原图',
-    bottomLabel: '是否发送原始图片（可能会增加流量消耗）',
     component: 'Switch'
   },
   {
@@ -38,65 +38,6 @@ export default [
     }
   },
   {
-    field: 'lofter.imageBgColor',
-    label: '图片背景色',
-    bottomLabel: '图片模式的全局背景颜色 (HEX码等)',
-    component: 'Input',
-  },
-  {
-    field: 'lofter.imageFontColor',
-    label: '正文字体颜色',
-    bottomLabel: '图片模式中正文文字的颜色',
-    component: 'Input',
-  },
-  {
-    field: 'lofter.imageFontSize',
-    label: '正文基础字号',
-    bottomLabel: '单位 px，默认 16',
-    component: 'InputNumber',
-  },
-  {
-    field: 'lofter.imageLineHeight',
-    label: '正文行高',
-    bottomLabel: '数字，如 1.8 控制行间距',
-    component: 'InputNumber',
-  },
-  {
-    field: 'lofter.imageTitleColor',
-    label: '标题颜色',
-    component: 'Input',
-  },
-  {
-    field: 'lofter.imageTitleSize',
-    label: '标题字号',
-    bottomLabel: '单位 px，默认 22',
-    component: 'InputNumber',
-  },
-  {
-    field: 'lofter.imagePadding',
-    label: '全局内边距',
-    bottomLabel: '控制边缘留白 (默认 40px)',
-    component: 'InputNumber',
-  },
-  {
-    field: 'lofter.sendFirstImage',
-    label: '发送首图',
-    bottomLabel: '解析到有图片时，单独发第一张图到聊天（可做合并转发的预览）',
-    component: 'Switch'
-  },
-  {
-    field: 'lofter.forwardTitle',
-    label: '转发标题',
-    bottomLabel: '合并转发模式下的外显消息标题',
-    component: 'Input'
-  },
-  {
-    field: 'lofter.forwardNickname',
-    label: '转发昵称',
-    bottomLabel: '合并转发模式下的内部发信人昵称（留空则默认Bot名称）',
-    component: 'Input'
-  },
-  {
     field: 'lofter.timeout',
     label: '超时时间',
     bottomLabel: '解析请求的超时时间（秒）',
@@ -106,26 +47,127 @@ export default [
       max: 120
     }
   },
+
+  // ===================== 发送设置 =====================
+  {
+    component: 'Divider',
+    label: '发送设置'
+  },
   {
     field: 'lofter.showTags',
     label: '显示标签',
-    bottomLabel: '解析结果中是否显示标签',
+    bottomLabel: '解析结果中是否显示文章标签',
+    component: 'Switch'
+  },
+  {
+    field: 'lofter.sendOriginal',
+    label: '发送原图',
+    bottomLabel: '是否发送原始图片（可能会增加流量消耗）',
+    component: 'Switch'
+  },
+  {
+    field: 'lofter.sendFirstImage',
+    label: '发送首图',
+    bottomLabel: '解析到有图片时，单独发第一张图到聊天（可做合并转发的预览）',
     component: 'Switch'
   },
   {
     field: 'lofter.enableImageSizeLimit',
     label: '限制图片大小',
-    bottomLabel: '开启后对超出的图片发送链接而不发原图',
+    bottomLabel: '开启后对超出阈值的图片发送链接而不发原图',
     component: 'Switch'
   },
   {
     field: 'lofter.imageSizeLimit',
-    label: '大小阈值(MB)',
-    bottomLabel: '触发图片大小限制的阈值（默认: 8MB）',
+    label: '大小阈值 (MB)',
+    bottomLabel: '触发图片大小限制的阈值（默认：8MB）',
     component: 'InputNumber',
     componentProps: {
       min: 1,
       max: 100
     }
+  },
+
+  // ===================== 纯文图片模式设置 =====================
+  {
+    component: 'Divider',
+    label: '纯文图片模式设置'
+  },
+  {
+    field: 'lofter.imageBgColor',
+    label: '背景颜色',
+    bottomLabel: '图片模式的全局背景颜色（HEX 色值，如 #FFFFFF）',
+    component: 'Input'
+  },
+  {
+    field: 'lofter.imageFontColor',
+    label: '正文字体颜色',
+    bottomLabel: '图片模式中正文文字的颜色（HEX 色值）',
+    component: 'Input'
+  },
+  {
+    field: 'lofter.imageFontSize',
+    label: '正文字号 (px)',
+    bottomLabel: '正文基础字号，单位 px，默认 16',
+    component: 'InputNumber',
+    componentProps: {
+      min: 10,
+      max: 36
+    }
+  },
+  {
+    field: 'lofter.imageLineHeight',
+    label: '正文行高',
+    bottomLabel: '数字倍数，如 1.8，控制行间距',
+    component: 'InputNumber',
+    componentProps: {
+      min: 1,
+      max: 3,
+      step: 0.1
+    }
+  },
+  {
+    field: 'lofter.imageTitleColor',
+    label: '标题颜色',
+    bottomLabel: '图片模式中标题文字的颜色（HEX 色值）',
+    component: 'Input'
+  },
+  {
+    field: 'lofter.imageTitleSize',
+    label: '标题字号 (px)',
+    bottomLabel: '标题字号，单位 px，默认 22',
+    component: 'InputNumber',
+    componentProps: {
+      min: 12,
+      max: 48
+    }
+  },
+  {
+    field: 'lofter.imagePadding',
+    label: '全局内边距 (px)',
+    bottomLabel: '控制图片四周的留白大小，默认 40px',
+    component: 'InputNumber',
+    componentProps: {
+      min: 0,
+      max: 120
+    }
+  },
+
+  // ===================== 合并转发设置 =====================
+  {
+    component: 'Divider',
+    label: '合并转发设置'
+  },
+  {
+    field: 'lofter.forwardTitle',
+    label: '转发标题',
+    bottomLabel: '合并转发模式下聊天列表中显示的外显标题',
+    component: 'Input'
+  },
+  {
+    field: 'lofter.forwardNickname',
+    label: '转发昵称',
+    bottomLabel: '合并转发内部的发信人昵称（留空则默认使用 Bot 名称）',
+    component: 'Input'
   }
 ]
