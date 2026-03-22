@@ -36,11 +36,6 @@ export class LofterPlugin extends plugin {
     logger.info(`[Lofter解析] 检测到链接: ${url}`)
     
     let prepMsg = null
-    try {
-      prepMsg = await e.reply(`收到 Lofter 链接 ${url}，准备解析...`)
-    } catch (err) {
-      logger.error('[Lofter解析] 发送准备消息失败', err)
-    }
 
     try {
       const response = await fetch(url, {
@@ -91,9 +86,36 @@ export class LofterPlugin extends plugin {
       const title = postView.title || '无标题'
       const publishTime = postView.publishTime || Date.now()
       const postId = postView.id || '未知'
-      let digest = postView.digest || ''
-      // Strip HTML tags
-      digest = digest.replace(/<[^>]+>/g, '').trim()
+      const photoLinks = postView.photoPostView?.photoLinks || []
+      const hasImages = photoLinks.length > 0
+
+      // 发送准备消息
+      try {
+        const msgType = hasImages ? '图文' : '纯文'
+        prepMsg = await e.reply(`收到${msgType} Lofter 链接 ${url}，准备解析...`)
+      } catch (err) {
+        logger.error('[Lofter解析] 发送准备消息失败', err)
+      }
+
+      let digest = ''
+      if (!hasImages && postView.textPostView?.content) {
+        digest = postView.textPostView.content
+      } else {
+        digest = postView.digest || ''
+      }
+
+      // 处理换行和 HTML 标签
+      digest = digest.replace(/<\/p>/ig, '\n')
+      digest = digest.replace(/<br[^>]*>/ig, '\n')
+      digest = digest.replace(/<[^>]+>/g, '') // remove all other tags
+      digest = digest.replace(/&times;/g, '×')
+      digest = digest.replace(/&nbsp;/g, ' ')
+      digest = digest.replace(/&lt;/g, '<')
+      digest = digest.replace(/&gt;/g, '>')
+      digest = digest.replace(/&amp;/g, '&')
+      digest = digest.replace(/&quot;/g, '"')
+      digest = digest.replace(/&#39;/g, "'")
+      digest = digest.split('\n').map(line => line.trim()).filter(line => line).join('\n')
 
       const tags = postView.tagList ? postView.tagList.join(', ') : '无'
       
@@ -128,8 +150,7 @@ export class LofterPlugin extends plugin {
       textMessages.push(interactInfo)
 
       // 5. 原图链接
-      const photoLinks = postView.photoPostView?.photoLinks || []
-      if (photoLinks.length > 0) {
+      if (hasImages) {
         let imgLinksInfo = "原图链接："
         photoLinks.forEach((link, index) => {
            let imgUrl = link.orign || link.raw
@@ -153,7 +174,7 @@ export class LofterPlugin extends plugin {
       let isImageSizeLimitTriggered = false
 
       // Handle images
-      if (photoLinks.length > 0) {
+      if (hasImages) {
         const tempDir = path.join(process.cwd(), 'temp', 'lofter')
         if (!fs.existsSync(tempDir)) {
           fs.mkdirSync(tempDir, { recursive: true })
