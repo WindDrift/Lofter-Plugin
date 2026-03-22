@@ -1,4 +1,4 @@
-
+// 详细定义并且导出了锅巴（Guoba）可视化控制面板中每一项独立配置的表单组件模型（如开关、下拉选择、数字输入框等）及其具体描述说明
 export default [
   {
     field: 'lofter.autoParse',

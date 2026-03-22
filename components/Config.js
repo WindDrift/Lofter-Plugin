@@ -13,24 +13,24 @@ export default class Config {
     this.watcher = {}
   }
 
-  // Get configuration
+  // 获取配置信息（主要入口）
   getDefSet(name) {
     return this.get(name)
   }
 
-  // Get configuration (alias)
+  // 获取配置信息（内部具体实现）
   get(name) {
     const file = `${this.configPath}${name}.yaml`
     const defaultFile = `${this.defaultPath}${name}.yaml`
     
     let config = {}
     
-    // Create config directory if not exists
+    // 如果用户特定的配置目录不存在，则递归创建该目录
     if (!fs.existsSync(this.configPath)) {
       fs.mkdirSync(this.configPath, { recursive: true })
     }
 
-    // Load default config
+    // 尝试读取并解析默认的配置文件
     if (fs.existsSync(defaultFile)) {
       try {
         config = YAML.parse(fs.readFileSync(defaultFile, 'utf8'))
@@ -39,7 +39,7 @@ export default class Config {
       }
     }
 
-    // Load user config and merge
+    // 尝试读取用户自定义配置文件，并将其与默认配置进行整合（如果有相同的键将覆盖）
     if (fs.existsSync(file)) {
       try {
         const userConfig = YAML.parse(fs.readFileSync(file, 'utf8'))
@@ -48,7 +48,7 @@ export default class Config {
         console.error(`[${plugin}] Load user config error: ${error}`)
       }
     } else if (fs.existsSync(defaultFile)) {
-      // Copy default to user config if user config doesn't exist
+      // 如果用户配置文件尚未创建，则将默认配置文件直接复制一份作为初始的用户配置
       try {
         fs.copyFileSync(defaultFile, file)
       } catch (error) {
@@ -59,7 +59,7 @@ export default class Config {
     return config
   }
 
-  // Save configuration
+  // 保存用户配置信息至本地 YAML 文件
   set(name, data) {
     const file = `${this.configPath}${name}.yaml`
     if (!fs.existsSync(this.configPath)) {

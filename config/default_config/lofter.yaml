@@ -6,27 +6,27 @@ autoParse: true
 sendOriginal: false
 
 # 消息发送方式
-# forward: 合并转发（默认）
-# normal: 逐条发送
+# forward: 合并转发（默认选项，可将多条消息打包成一条发送）
+# normal: 逐条发送（将解析出的图片和文本逐条发送至聊天内容）
 sendMode: forward
 
-# 在解析到有图片时，单独发送第一张图片到聊天（常用于开启合并转发时预览）
+# 在解析到有图片时，单独发送第一张图片到聊天（常用于开启合并转发时进行前置预览）
 sendFirstImage: false
 
-# 合并转发外显消息（标题）
+# 合并转发外显消息（合并消息显示在聊天列表中的标题）
 forwardTitle: 'Lofter解析结果'
 
-# 合并转发内部QQ名（昵称），为空时使用默认Bot名称
+# 合并转发内部QQ名（合并消息内注明的发出者昵称），为空时使用默认Bot名称
 forwardNickname: ''
 
-# 超时时间（秒）
+# 请求的超时时间（单位：秒）
 timeout: 30
 
-# 是否显示标签
+# 是否在解析结果中显示文章的标签（Tags）
 showTags: true
 
-# 开启图片大小限制
+# 开启图片大小限制，超出限制的图片将会被拦截或替换
 enableImageSizeLimit: true
 
-# 图片大小限制（MB）
+# 图片大小限制的最大值（单位：MB）
 imageSizeLimit: 8

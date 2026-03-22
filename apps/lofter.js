@@ -28,7 +28,7 @@ export class LofterPlugin extends plugin {
     const config = new Config().getDefSet('lofter')
     if (!config.autoParse) return false
 
-    // Extract URL from message
+    // 从触发的聊天消息中，利用正则提取出可能存在的 Lofter 链接 URL
     const urlMatch = e.msg.match(/(https?:\/\/[a-zA-Z0-9-]+\.lofter\.com\/post\/[a-zA-Z0-9_]+)/i)
     if (!urlMatch) return false
 
@@ -53,7 +53,7 @@ export class LofterPlugin extends plugin {
 
       const html = await response.text()
       
-      // Extract window.__initialize_data__
+      // 解析目标页面的 HTML 内容，提取包含页面核心数据的 window.__initialize_data__ 对象
       const dataMatch = html.match(/window\.__initialize_data__\s*=\s*(\{[\s\S]*?\})<\/script>/)
       if (!dataMatch) {
         await e.reply('未能在页面中找到解析数据。')
@@ -89,7 +89,7 @@ export class LofterPlugin extends plugin {
       const photoLinks = postView.photoPostView?.photoLinks || []
       const hasImages = photoLinks.length > 0
 
-      // 发送准备消息
+      // 发送准备解析的提示消息，告知用户系统已经开始正在处理请求
       try {
         const msgType = hasImages ? '图文' : '纯文'
         prepMsg = await e.reply(`收到${msgType} Lofter 链接 ${url}，准备解析...`)
@@ -104,10 +104,11 @@ export class LofterPlugin extends plugin {
         digest = postView.digest || ''
       }
 
-      // 处理换行和 HTML 标签
+      // 将 HTML 换行标签以及段落标签替换为真实的换行符，为后续纯文本输出做准备
       digest = digest.replace(/<\/p>/ig, '\n')
       digest = digest.replace(/<br[^>]*>/ig, '\n')
-      digest = digest.replace(/<[^>]+>/g, '') // remove all other tags
+      // 移除其余所有的 HTML 特殊标签内容，达到清洗纯文本摘要的目的
+      digest = digest.replace(/<[^>]+>/g, '')
       digest = digest.replace(/&times;/g, '×')
       digest = digest.replace(/&nbsp;/g, ' ')
       digest = digest.replace(/&lt;/g, '<')
@@ -130,26 +131,26 @@ export class LofterPlugin extends plugin {
 
       let textMessages = []
 
-      // 1. 博主信息
+      // 1. 组织并格式化博主的基础信息（昵称、博客名、Lofter ID）
       let bloggerInfo = `${nickname}\n${blogName}.lofter.com\nID：${blogId}`
       textMessages.push(bloggerInfo)
 
-      // 2. 博文信息
+      // 2. 组织博文的关键信息（原链接、发布日期时间、文章独立ID及标签）
       let postInfo = `博文链接：${url}\n发布时间：${publishDateTimeStr}\nID：${postId}`
       if (config.showTags) {
         postInfo += `\n标签：${tags}`
       }
       textMessages.push(postInfo)
 
-      // 3. 标题和内容
+      // 3. 组织博文的正文标题与清洗后的文本摘要内容
       let contentInfo = `${title}\n${digest}`
       textMessages.push(contentInfo)
 
-      // 4. 互动数据
+      // 4. 汇总该篇博文的各项社区互动数据（回复、点赞、推荐、收藏及热度）
       let interactInfo = `回复: ${responseCount}\n点赞: ${favoriteCount}\n推荐: ${shareCount}\n收藏: ${subscribeCount}\n热度: ${hotCount}`
       textMessages.push(interactInfo)
 
-      // 5. 原图链接
+      // 5. 遍历并拼接出每一张包含内文照片的原图直链信息
       if (hasImages) {
         let imgLinksInfo = "原图链接："
         photoLinks.forEach((link, index) => {
@@ -162,7 +163,7 @@ export class LofterPlugin extends plugin {
         textMessages.push(imgLinksInfo)
       }
 
-      // 如果不是合并转发模式，先发送文本消息
+      // 判断当前发送模式，若不是合并转发模式（forward），则先将以上整理好的文本消息逐条独立发送
       if (config.sendMode !== 'forward') {
         for (let msg of textMessages) {
           await e.reply(msg)
@@ -173,7 +174,7 @@ export class LofterPlugin extends plugin {
       let firstImagePath = null
       let isImageSizeLimitTriggered = false
 
-      // Handle images
+      // 核心业务逻辑：当文章包含图片时，开始处理图片的下载与发送流程
       if (hasImages) {
         const tempDir = path.join(process.cwd(), 'temp', 'lofter')
         if (!fs.existsSync(tempDir)) {
@@ -181,20 +182,20 @@ export class LofterPlugin extends plugin {
         }
 
         for (let i = 0; i < photoLinks.length; i++) {
-          // Use 'orign' first, then 'raw' as fallback. 'raw' often points to nos.netease.com which can return 403.
-          // 'orign' usually points to imglf3/4/5.lf127.net which is more reliable.
+          // 图片链接策略：优先使用 'orign' 字段获取原始大图，如果为空则回退使用 'raw' 字段。
+          // 优化原因：'raw' 常常指向容易返回 403 禁止访问的网易云存储，而 'orign' 地址通常更加稳定可靠。
           let imgUrl = photoLinks[i].orign || photoLinks[i].raw
           if (!imgUrl) continue
 
-          // 去掉问号后面的参数，获取原图
+          // 过滤掉 URL 中问号及其后的查询限制参数，确保获取到的是完整的原图链接
           imgUrl = imgUrl.split('?')[0]
 
-          // Remove query parameters to get clean extension
+          // 进而剔除 URL 参数以提取最准确干净的文件扩展名（如 jpg, png），以供保存使用
           const cleanUrl = imgUrl
           const extMatch = cleanUrl.match(/\.(jpg|jpeg|png|gif|webp)/i)
           const ext = extMatch ? extMatch[1] : 'jpg'
           
-          // Sanitize filename
+          // 净化并格式化文件名：将博主名称中一切操作系统路径不允许的特殊字符（如斜杠、星号等）全部替换为下划线，以防本地文件创建失败
           const safeBlogName = blogName.replace(/[\\/:*?"<>|]/g, '_')
           let fileName = `${safeBlogName}-${publishDateStr}`
           if (photoLinks.length > 1) {
@@ -215,7 +216,7 @@ export class LofterPlugin extends plugin {
             
             await streamPipeline(imgRes.body, fs.createWriteStream(filePath))
             
-            // Verify file exists and is not empty
+            // 严谨性校验：验证从网络上下载的临时图片文件是否被成功持久化创建，并且判断其文件大小是否不为 0（排除无效空文件）
             if (!fs.existsSync(filePath)) {
               throw new Error('File download failed (file not found)')
             }
@@ -249,7 +250,7 @@ export class LofterPlugin extends plugin {
                   firstImagePath = filePath
                 }
               } else {
-                // Send as file or image based on config
+                // 根据配置文件中 'sendOriginal' 选项及当前聊天类型，决定是以独立的源文件形式还是以渲染图片的格式发送
                 try {
                   if (config.sendOriginal) {
                     if (e.isGroup) {
@@ -282,8 +283,8 @@ export class LofterPlugin extends plugin {
               msgList.push(`图片 ${fileName} 下载失败。`)
             }
           } finally {
-            // Do not delete file here if we are going to send it in forward message later
-            // We will clean up the temp directory periodically or after sending forward message
+            // 文件清理策略与生命周期管理：
+            // 如果是合并转发模式，那么临时文件在这里必须保留以供最终统一构建图文并茂的转发日志。普通模式下由于图片已发送，便可随下随删。
             if (config.sendMode !== 'forward') {
               if (fs.existsSync(filePath)) {
                 fs.unlinkSync(filePath)
@@ -310,7 +311,7 @@ export class LofterPlugin extends plugin {
           if (forwardMsg) {
             await e.reply(forwardMsg)
           } else {
-            // Fallback to sending one by one
+            // 异常回退策略：一旦由于不可控因素导致合并转发的高级消息结构体构建失败或被服务器拒收，则降级为逐条单独发送纯文本与图片组成的小消息矩阵
             for (let msg of msgList) {
               await e.reply(msg)
             }
@@ -330,7 +331,7 @@ export class LofterPlugin extends plugin {
             await e.reply(msg)
           }
         } finally {
-          // Cleanup temp files if forward mode
+          // 集中清理流程：一旦走到合并转发（无论成功或降级），都代表当前图文数据已被 QQ 协议层接收处理完毕，此时需扫尾清理此次分配下载产生的临时目录空间
           if (photoLinks.length > 0) {
             const tempDir = path.join(process.cwd(), 'temp', 'lofter')
             if (fs.existsSync(tempDir)) {
@@ -351,7 +352,7 @@ export class LofterPlugin extends plugin {
       await e.reply('Lofter解析时发生错误。')
     }
     
-    // 撤回准备消息
+    // 流程收尾：在完成全部解析并投递数据之后，主动撤回最初发出的“准备解析中”的系统提示消息，减少聊天界面干扰
     if (prepMsg && prepMsg.message_id) {
       try {
         if (e.group?.recallMsg) {
