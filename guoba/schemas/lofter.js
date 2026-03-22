@@ -13,6 +13,12 @@ export default [
     component: 'Switch'
   },
   {
+    field: 'lofter.smartIndent',
+    label: '智能首行缩进',
+    bottomLabel: '如果段落没有缩进，自动在开头加两个全角空格',
+    component: 'Switch'
+  },
+  {
     field: 'lofter.sendMode',
     label: '发送模式',
     bottomLabel: '选择消息发送的方式',

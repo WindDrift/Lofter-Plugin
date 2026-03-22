@@ -116,7 +116,22 @@ export class LofterPlugin extends plugin {
       digest = digest.replace(/&amp;/g, '&')
       digest = digest.replace(/&quot;/g, '"')
       digest = digest.replace(/&#39;/g, "'")
-      let paragraphs = digest.split('\n').map(line => line.trim()).filter(line => line)
+      let rawLines = digest.split('\n').filter(line => line.trim())
+      let paragraphs = []
+      const smartIndent = config.smartIndent ?? true
+      
+      if (smartIndent) {
+        // 检查是否有任何段落已经包含首行缩进（空格或全角空格）
+        const hasIndent = rawLines.some(line => line.startsWith('  ') || line.startsWith('　　'))
+        if (!hasIndent) {
+          // 如果都没有缩进，则自动为每一段加上全角缩进
+          paragraphs = rawLines.map(line => '　　' + line.trim())
+        } else {
+          paragraphs = rawLines.map(line => line.trim())
+        }
+      } else {
+        paragraphs = rawLines.map(line => line.trim())
+      }
 
       const tags = postView.tagList ? postView.tagList.join(', ') : '无'
       
