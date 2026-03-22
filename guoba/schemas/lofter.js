@@ -152,6 +152,26 @@ export default [
       max: 120
     }
   },
+  {
+    field: 'lofter.imageWidth',
+    label: '图片宽度 (px)',
+    bottomLabel: '布局基础宽度，默认 800px',
+    component: 'InputNumber',
+    componentProps: {
+      min: 400,
+      max: 2000
+    }
+  },
+  {
+    field: 'lofter.imageDeviceScale',
+    label: '渲染倍率',
+    bottomLabel: '无头浏览器渲染偏差系数：1 = 正常，2 = 2x 清晰，默认 2',
+    component: 'InputNumber',
+    componentProps: {
+      min: 1,
+      max: 4
+    }
+  },
 
   // ===================== 合并转发设置 =====================
   {

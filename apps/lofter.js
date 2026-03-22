@@ -163,7 +163,14 @@ export class LofterPlugin extends plugin {
             blogId: blogId,
             avatar: avatarUrl,
             paragraphs: paragraphs,
-            config: config
+            config: config,
+            // 截图尺寸与清晰度
+            pageGotoParams: { waitUntil: 'networkidle0' },
+            viewPort: {
+              width: config.imageWidth || 800,
+              height: 100,
+              deviceScaleFactor: config.imageDeviceScale || 2
+            }
           }
           
           let imgRes = await puppeteer.screenshot('lofter-plugin', renderData)

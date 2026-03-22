@@ -31,6 +31,10 @@ imageTitleColor: '#000000'
 imageTitleSize: 22
 # 图片模式整体内边距(px)
 imagePadding: 40
+# 图片模式布局宽度(px)
+imageWidth: 800
+# 图片模式追遥长图渲染倍率（1=正常，设置为 2 则输出分辨率加倍）
+imageDeviceScale: 2
 
 # 在解析到有图片时，单独发送第一张图片到聊天（常用于开启合并转发时进行前置预览）
 sendFirstImage: false
