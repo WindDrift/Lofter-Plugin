@@ -188,6 +188,7 @@ export class LofterPlugin extends plugin {
             let renderData = {
               tplFile: './plugins/Lofter-Plugin/resources/html/lofter/text-post.html',
               plugin: 'Lofter-Plugin',
+              saveId: `lofter-plugin-${i}`, // 使用唯一的 saveId 确保不冲突
               title: pageTitle,
               nickname: nickname,
               publishTime: publishDateTimeStr,
@@ -204,7 +205,8 @@ export class LofterPlugin extends plugin {
               }
             }
             
-            let imgRes = await puppeteer.screenshot(`lofter-plugin-${i}`, renderData)
+            // 修正：统一使用 'lofter-plugin' 作为 name，确保 Yunzai 渲染器能正确触发目录创建逻辑
+            let imgRes = await puppeteer.screenshot('lofter-plugin', renderData)
             if (imgRes) {
                textMessages.push(imgRes)
                if (i === 0) imageModeImagePath = imgRes
