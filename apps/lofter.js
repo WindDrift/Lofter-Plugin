@@ -156,32 +156,62 @@ export class LofterPlugin extends plugin {
           
           const deviceScale = config.imageDeviceScale || 2
           const imageWidth = config.imageWidth || 800
-
-          let renderData = {
-            tplFile: './plugins/Lofter-Plugin/resources/html/lofter/text-post.html',
-            plugin: 'Lofter-Plugin',
-            title: title,
-            nickname: nickname,
-            publishTime: publishDateTimeStr,
-            blogId: blogId,
-            avatar: avatarUrl,
-            paragraphs: paragraphs,
-            config: config,
-            // 截图尺寸与清晰度
-            pageGotoParams: { waitUntil: 'networkidle0' },
-            viewPort: {
-              width: imageWidth * deviceScale,
-              height: 100,
-              deviceScaleFactor: deviceScale
-            }
-          }
+          const textLimit = config.imageTextLimit || 0
           
-          let imgRes = await puppeteer.screenshot('lofter-plugin', renderData)
-          if (imgRes) {
-             textMessages.push(imgRes)
-             imageModeImagePath = imgRes
+          let paragraphGroups = []
+          if (textLimit > 0) {
+            let currentGroup = []
+            let currentLength = 0
+            for (let p of paragraphs) {
+              if (currentLength + p.length > textLimit && currentGroup.length > 0) {
+                paragraphGroups.push(currentGroup)
+                currentGroup = [p]
+                currentLength = p.length
+              } else {
+                currentGroup.push(p)
+                currentLength += p.length
+              }
+            }
+            if (currentGroup.length > 0) {
+              paragraphGroups.push(currentGroup)
+            }
           } else {
-             textMessages.push(`${title}\n\n${paragraphs.join('\n\n')}`)
+            paragraphGroups.push(paragraphs)
+          }
+
+          for (let i = 0; i < paragraphGroups.length; i++) {
+            let pageTitle = title
+            if (paragraphGroups.length > 1) {
+               pageTitle = `${title} (${i + 1}/${paragraphGroups.length})`
+            }
+
+            let renderData = {
+              tplFile: './plugins/Lofter-Plugin/resources/html/lofter/text-post.html',
+              plugin: 'Lofter-Plugin',
+              title: pageTitle,
+              nickname: nickname,
+              publishTime: publishDateTimeStr,
+              blogId: blogId,
+              avatar: avatarUrl,
+              paragraphs: paragraphGroups[i],
+              config: config,
+              // 截图尺寸与清晰度
+              pageGotoParams: { waitUntil: 'networkidle0' },
+              viewPort: {
+                width: imageWidth * deviceScale,
+                height: 100,
+                deviceScaleFactor: deviceScale
+              }
+            }
+            
+            let imgRes = await puppeteer.screenshot(`lofter-plugin-${i}`, renderData)
+            if (imgRes) {
+               textMessages.push(imgRes)
+               if (i === 0) imageModeImagePath = imgRes
+            } else if (i === 0) {
+               textMessages.push(`${title}\n\n${paragraphs.join('\n\n')}`)
+               break
+            }
           }
         } catch (e) {
           logger.error('[Lofter解析] 生成纯文本长图失败：', e)

@@ -35,6 +35,8 @@ imagePadding: 40
 imageWidth: 800
 # 图片模式追遥长图渲染倍率（1=正常，设置为 2 则输出分辨率加倍）
 imageDeviceScale: 2
+# 图片模式文本字数限制（单次最多渲染字数，超出则分图，设置为 0 则不限制）
+imageTextLimit: 0
 
 # 在解析到有图片时，单独发送第一张图片到聊天（常用于开启合并转发时进行前置预览）
 sendFirstImage: false

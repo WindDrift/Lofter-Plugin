@@ -172,6 +172,16 @@ export default [
       max: 4
     }
   },
+  {
+    field: 'lofter.imageTextLimit',
+    label: '文本数量限制',
+    bottomLabel: '长文本超过此字数将自动分页渲染为多张图片（0为不限制）',
+    component: 'InputNumber',
+    componentProps: {
+      min: 0,
+      max: 10000
+    }
+  },
 
   // ===================== 合并转发设置 =====================
   {
