@@ -2,24 +2,92 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <link rel="stylesheet" href="./text-post.css">
   <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
     body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', 'SimHei', sans-serif;
       background-color: {{config.imageBgColor || '#FFFFFF'}};
       color: {{config.imageFontColor || '#333333'}};
-      font-size: {{config.imageFontSize || 16}}px;
+      font-size: {{(config.imageFontSize || 16) + 'px'}};
       line-height: {{config.imageLineHeight || 1.8}};
-      padding: {{config.imagePadding || 40}}px;
+      padding: {{(config.imagePadding || 40) + 'px'}};
+      width: 800px;
     }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+
+    .avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-right: 12px;
+      flex-shrink: 0;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    }
+
+    .author-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .author-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: {{config.imageFontColor || '#333333'}};
+      margin-bottom: 2px;
+    }
+
+    .post-date {
+      font-size: 13px;
+      color: #999999;
+    }
+
     .title {
       color: {{config.imageTitleColor || '#000000'}};
-      font-size: {{config.imageTitleSize || 22}}px;
+      font-size: {{(config.imageTitleSize || 22) + 'px'}};
+      font-weight: bold;
+      margin-bottom: 20px;
+      line-height: 1.4;
+    }
+
+    .content {
+      text-align: justify;
+      word-wrap: break-word;
+      word-break: break-all;
+    }
+
+    .content p {
+      margin: 0 0 1em 0;
+    }
+
+    .footer {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(136, 136, 136, 0.2);
+      color: #999999;
+      font-size: 13px;
+      text-align: center;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="header" id="header-avatar">
+    <div class="header">
       {{if avatar}}
       <img class="avatar" src="{{avatar}}" alt="avatar">
       {{/if}}
@@ -34,9 +102,7 @@
       <p>{{p}}</p>
       {{/each}}
     </div>
-    <div class="footer">
-      Lofter解析 - ID: {{blogId}}
-    </div>
+    <div class="footer">Lofter 解析 · ID: {{blogId}}</div>
   </div>
 </body>
 </html>
