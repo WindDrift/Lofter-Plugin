@@ -120,7 +120,7 @@ export default [
   {
     field: 'lofter.imageFontSize',
     label: '正文字号 (px)',
-    bottomLabel: '正文基础字号，单位 px，默认 16',
+    bottomLabel: '正文基础字号，单位 px，默认 26',
     component: 'InputNumber',
     componentProps: {
       min: 10,
@@ -130,7 +130,7 @@ export default [
   {
     field: 'lofter.imageLineHeight',
     label: '正文行高',
-    bottomLabel: '数字倍数，如 1.8，控制行间距',
+    bottomLabel: '数字倍数，如 1.5，控制行间距',
     component: 'InputNumber',
     componentProps: {
       min: 1,
@@ -147,7 +147,7 @@ export default [
   {
     field: 'lofter.imageTitleSize',
     label: '标题字号 (px)',
-    bottomLabel: '标题字号，单位 px，默认 22',
+    bottomLabel: '标题字号，单位 px，默认 32',
     component: 'InputNumber',
     componentProps: {
       min: 12,

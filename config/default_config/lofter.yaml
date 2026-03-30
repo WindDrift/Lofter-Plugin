@@ -24,13 +24,13 @@ imageBgColor: '#FFFFFF'
 # 图片模式正文字体颜色
 imageFontColor: '#333333'
 # 图片模式正文基础字号(px)
-imageFontSize: 16
+imageFontSize: 26
 # 图片模式正文行高
-imageLineHeight: 1.8
+imageLineHeight: 1.5
 # 图片模式标题颜色
 imageTitleColor: '#000000'
 # 图片模式标题字号(px)
-imageTitleSize: 22
+imageTitleSize: 32
 # 图片模式整体内边距(px)
 imagePadding: 40
 # 图片模式布局宽度(px)
@@ -38,7 +38,7 @@ imageWidth: 800
 # 图片模式追遥长图渲染倍率（1=正常，设置为 2 则输出分辨率加倍）
 imageDeviceScale: 2
 # 图片模式文本字数限制（单次最多渲染字数，超出则分图，设置为 0 则不限制）
-imageTextLimit: 0
+imageTextLimit: 1000
 
 # 智能首行空两格（如果博文没缩进，自动在开头加两个全角空格）
 smartIndent: true
