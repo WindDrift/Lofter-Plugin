@@ -100,6 +100,12 @@ export default [
     label: '纯文图片模式设置'
   },
   {
+    field: 'lofter.imageFont',
+    label: '正文字体',
+    bottomLabel: '填入系统字体名称。或放入字体文件到 resources/fonts 目录（优先读取）',
+    component: 'Input'
+  },
+  {
     field: 'lofter.imageBgColor',
     label: '背景颜色',
     bottomLabel: '图片模式的全局背景颜色（HEX 色值，如 #FFFFFF）',

@@ -5,7 +5,9 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { pipeline } from 'node:stream'
 import { promisify } from 'node:util'
+import { fileURLToPath } from 'node:url'
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const streamPipeline = promisify(pipeline)
 
 export class LofterPlugin extends plugin {
@@ -171,6 +173,34 @@ export class LofterPlugin extends plugin {
 
       if (!hasImages && pureTextSendMode === 'image') {
         try {
+          const fontsDir = path.join(__dirname, '..', 'resources', 'fonts')
+          if (!fs.existsSync(fontsDir)) {
+             fs.mkdirSync(fontsDir, { recursive: true })
+          }
+
+          let localFontFile = null
+          let customFontName = config.imageFont || ''
+          
+          if (fs.existsSync(fontsDir)) {
+            const files = fs.readdirSync(fontsDir)
+            const fontFiles = files.filter(f => ['.ttf', '.otf', '.woff', '.woff2'].includes(path.extname(f).toLowerCase()))
+            
+            if (customFontName) {
+              localFontFile = fontFiles.find(f => path.basename(f, path.extname(f)) === customFontName) || fontFiles.find(f => f === customFontName)
+            }
+            
+            if (!localFontFile && fontFiles.length > 0) {
+              localFontFile = fontFiles[0]
+            }
+          }
+
+          let fontFamilyCSS = "'PingFang SC', 'Microsoft YaHei', 'SimHei', sans-serif"
+          if (localFontFile) {
+            fontFamilyCSS = `'LocalCustomFont', ` + (customFontName ? `'${customFontName}', ` : '') + fontFamilyCSS
+          } else if (customFontName) {
+            fontFamilyCSS = `'${customFontName}', ` + fontFamilyCSS
+          }
+
           // 动态导入云崽的 puppeteer 支持
           const puppeteer = (await import('../../../lib/puppeteer/puppeteer.js')).default
           // 提取头像链接
@@ -218,6 +248,8 @@ export class LofterPlugin extends plugin {
               avatar: avatarUrl,
               paragraphs: paragraphGroups[i],
               config: config,
+              localFontFile: localFontFile,
+              fontFamilyCSS: fontFamilyCSS,
               // 截图尺寸与清晰度
               pageGotoParams: { waitUntil: 'networkidle0' },
               viewPort: {
