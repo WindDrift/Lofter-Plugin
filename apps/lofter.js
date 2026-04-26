@@ -315,6 +315,8 @@ export class LofterPlugin extends plugin {
       let msgList = [...textMessages]
       let firstImagePath = null
       let isImageSizeLimitTriggered = false
+      let firstImageIsThumbnail = false
+      let firstImageThumbnailMsg = null
 
       // 额外：如果在图片模式下，本身就相当于生成了一张“伪原图”，把它置为首图使其支持配置的外部预览
       if (imageModeImagePath) {
@@ -395,6 +397,8 @@ export class LofterPlugin extends plugin {
                   msgList.push(combinedMsg)
                   if (!firstImagePath) {
                     firstImagePath = thumbnailUrl
+                    firstImageIsThumbnail = true
+                    firstImageThumbnailMsg = limitMsg
                   }
                 } else {
                   await e.reply(combinedMsg)
@@ -488,9 +492,20 @@ export class LofterPlugin extends plugin {
             const showPrompt = config.imageCountPrompt ?? true
             if (firstImagePath) {
               try {
-                await e.reply(segment.image(firstImagePath))
+                let firstImageMsg = segment.image(firstImagePath)
+                let suffixMsg = ''
+
                 if (showPrompt && photoLinks.length >= 2) {
-                  await e.reply(`还有${photoLinks.length - 1}张图片，请点击合并转发查看`)
+                  suffixMsg += `\n还有${photoLinks.length - 1}张图片，请点击合并转发查看`
+                }
+                if (firstImageIsThumbnail && firstImageThumbnailMsg) {
+                  suffixMsg += firstImageThumbnailMsg
+                }
+
+                if (suffixMsg) {
+                  await e.reply([firstImageMsg, suffixMsg])
+                } else {
+                  await e.reply(firstImageMsg)
                 }
               } catch (firstImgErr) {
                 logger.error(`[Lofter解析] 发送首图失败: ${firstImgErr.message}`)
