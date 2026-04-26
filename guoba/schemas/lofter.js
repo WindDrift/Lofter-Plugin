@@ -78,6 +78,12 @@ export default [
     component: 'Switch'
   },
   {
+    field: 'lofter.imageCountPrompt',
+    label: '图片数量提示',
+    bottomLabel: '配合发送首图功能，在首图后附加剩余图片数量或超限提示',
+    component: 'Switch'
+  },
+  {
     field: 'lofter.enableImageSizeLimit',
     label: '限制图片大小',
     bottomLabel: '开启后对超出阈值的图片发送链接而不发原图',

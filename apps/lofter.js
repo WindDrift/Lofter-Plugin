@@ -170,6 +170,7 @@ export class LofterPlugin extends plugin {
       // 单消息/多消息/图片模式处理逻辑
       const pureTextSendMode = config.pureTextSendMode || 'single'
       let imageModeImagePath = null
+      let successImageCount = 0
 
       if (!hasImages && pureTextSendMode === 'image') {
         try {
@@ -263,6 +264,7 @@ export class LofterPlugin extends plugin {
             if (imgRes) {
                let imgMsg = segment.image(imgRes)
                textMessages.push(imgMsg)
+               successImageCount++
                if (i === 0) imageModeImagePath = imgRes // 存储 Buffer 而非 Segment 对象
             } else if (i === 0) {
                textMessages.push(`${title}\n\n${paragraphs.join('\n\n')}`)
@@ -389,6 +391,7 @@ export class LofterPlugin extends plugin {
             }
 
             if (!skipImage) {
+              successImageCount++
               if (config.sendMode === 'forward') {
                 msgList.push(segment.image(filePath))
                 if (!firstImagePath) {
@@ -462,11 +465,20 @@ export class LofterPlugin extends plugin {
             }
           }
 
-          if (config.sendFirstImage && firstImagePath) {
-            try {
-              await e.reply(segment.image(firstImagePath))
-            } catch (firstImgErr) {
-              logger.error(`[Lofter解析] 发送首图失败: ${firstImgErr.message}`)
+          if (config.sendFirstImage) {
+            const showPrompt = config.imageCountPrompt ?? true
+            if (firstImagePath) {
+              try {
+                await e.reply(segment.image(firstImagePath))
+                if (showPrompt && photoLinks.length >= 2) {
+                  await e.reply(`还有${photoLinks.length - 1}张图片，请点击合并转发查看`)
+                }
+              } catch (firstImgErr) {
+                logger.error(`[Lofter解析] 发送首图失败: ${firstImgErr.message}`)
+              }
+            } else if (showPrompt && photoLinks.length > 0 && successImageCount === 0) {
+              const sizeLimitMB = config.imageSizeLimit ?? 8
+              await e.reply(`解析成功${photoLinks.length}张图片，均超过设定的大小上限（${sizeLimitMB}MB），请点击合并转发查看具体链接。`)
             }
           }
         } catch (err) {

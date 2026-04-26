@@ -46,6 +46,9 @@ smartIndent: true
 # 在解析到有图片时，单独发送第一张图片到聊天（常用于开启合并转发时进行前置预览）
 sendFirstImage: false
 
+# 配合发送首图功能，在首图后附加剩余图片数量或超限提示
+imageCountPrompt: true
+
 # 合并转发外显消息（合并消息显示在聊天列表中的标题）
 forwardTitle: 'Lofter解析结果'
 
