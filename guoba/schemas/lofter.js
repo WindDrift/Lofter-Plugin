@@ -78,26 +78,36 @@ export default [
     component: 'Switch'
   },
   {
-    field: 'lofter.imageCountPrompt',
-    label: '图片数量提示',
-    bottomLabel: '配合发送首图功能，在首图后附加剩余图片数量或超限提示',
-    component: 'Switch'
-  },
-  {
     field: 'lofter.enableImageSizeLimit',
-    label: '限制图片大小',
-    bottomLabel: '开启后对超出阈值的图片发送链接而不发原图',
-    component: 'Switch'
+    label: '图片大小限制',
+    bottomLabel: '超出阈值的图片将不发送，仅发送链接，可有效防止因单图过大导致机器人进程崩溃',
+    component: 'Switch',
+    defaultValue: true
   },
   {
     field: 'lofter.imageSizeLimit',
-    label: '大小阈值 (MB)',
-    bottomLabel: '触发图片大小限制的阈值（默认：8MB）',
+    label: '图片大小限制阈值',
+    bottomLabel: '单位：MB，仅当开启图片大小限制时生效',
     component: 'InputNumber',
     componentProps: {
       min: 1,
-      max: 100
-    }
+      max: 50
+    },
+    defaultValue: 8
+  },
+  {
+    field: 'lofter.sendThumbnail',
+    label: '发送缩略图',
+    bottomLabel: '配合大小限制，对超出阈值的图片尝试发送低画质缩略图',
+    component: 'Switch',
+    defaultValue: true
+  },
+  {
+    field: 'lofter.enableImageCountPrompt',
+    label: '多图数量提示',
+    bottomLabel: '在解析到多图时发送数量提示',
+    component: 'Switch',
+    defaultValue: true
   },
 
   // ===================== 纯文图片模式设置 =====================

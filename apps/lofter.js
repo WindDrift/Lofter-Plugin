@@ -382,11 +382,30 @@ export class LofterPlugin extends plugin {
             if (enableLimit && fileSizeMB > sizeLimitMB) {
               skipImage = true
               isImageSizeLimitTriggered = true
-              const limitMsg = `图${i + 1}大小(${fileSizeMB}MB)超过设定限制(${sizeLimitMB}MB)，请点击链接获取图片：${imgUrl}`
-              if (config.sendMode === 'forward') {
-                msgList.push(limitMsg)
+              
+              const sendThumbnail = config.sendThumbnail ?? true
+              if (sendThumbnail) {
+                const thumbnailUrl = `${imgUrl}?imageView&thumbnail=750x0&quality=96&stripmeta=0&type=jpg&tostatic=1&enlarge=1`
+                const limitMsg = `\n图${i + 1}超过设定限制(${sizeLimitMB}MB)，该图片并非原图，请点击上方链接获取原图。`
+                
+                successImageCount++
+                const combinedMsg = [segment.image(thumbnailUrl), limitMsg]
+                
+                if (config.sendMode === 'forward') {
+                  msgList.push(combinedMsg)
+                  if (!firstImagePath) {
+                    firstImagePath = thumbnailUrl
+                  }
+                } else {
+                  await e.reply(combinedMsg)
+                }
               } else {
-                await e.reply(limitMsg)
+                const limitMsg = `图${i + 1}大小(${fileSizeMB}MB)超过设定限制(${sizeLimitMB}MB)，请点击链接获取图片：${imgUrl}`
+                if (config.sendMode === 'forward') {
+                  msgList.push(limitMsg)
+                } else {
+                  await e.reply(limitMsg)
+                }
               }
             }
 

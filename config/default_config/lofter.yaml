@@ -61,8 +61,14 @@ timeout: 30
 # 是否开启标签链接功能（启用后标签将作为独立消息发送并附带 Lofter 链接）
 tagLinks: true
 
-# 开启图片大小限制，超出限制的图片将会被拦截或替换
+# 是否启用图片大小限制，超出阈值的图片将不发送，仅发送链接，可有效防止因单图过大导致机器人进程崩溃
 enableImageSizeLimit: true
 
-# 图片大小限制的最大值（单位：MB）
+# 图片大小限制阈值，单位：MB，仅当 enableImageSizeLimit 为 true 时生效
 imageSizeLimit: 8
+
+# 是否在解析到多图时发送数量提示
+enableImageCountPrompt: true
+
+# 配合图片大小限制功能，超出阈值的图片将获取并发送缩略图
+sendThumbnail: true
