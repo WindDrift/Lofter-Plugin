@@ -110,7 +110,7 @@
       <p>{{p}}</p>
       {{/each}}
     </div>
-    <div class="footer">Lofter 解析 · ID: {{blogId}}</div>
+    <div class="footer">Lofter 解析 · ID: {{blogId}}{{if enablePureTextImageFooterStats}} · 共{{totalTextCount}}字，{{paragraphCount}}自然段{{if pageTotal > 1}} · 第{{pageIndex}}页/{{pageTotal}}页 · 本页{{pageTextCount}}字{{/if}}{{/if}}</div>
   </div>
 </body>
 </html>

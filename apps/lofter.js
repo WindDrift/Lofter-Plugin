@@ -20,9 +20,9 @@ import plugin from '../../../lib/plugins/plugin.js'
 import Config from '../components/Config.js'
 import { fetchPage, cleanupTempFiles, cleanupFile } from '../lib/fetcher.js'
 import { parsePageData, extractPostInfo } from '../lib/parser.js'
-import { processText } from '../lib/textProcessor.js'
+import { countTextUnits, processText } from '../lib/textProcessor.js'
 import { processImage, getTempDir } from '../lib/imageHandler.js'
-import { resolveFontConfig, renderTextAsImages } from '../lib/imageRenderer.js'
+import { resolveFontConfig, renderTextAsImages, splitParagraphsByLimit } from '../lib/imageRenderer.js'
 import {
   buildBloggerMessage,
   buildPostInfoMessage,
@@ -93,6 +93,18 @@ export class LofterPlugin extends plugin {
       const paragraphs = processText(post.digest, {
         smartIndent: config.smartIndent ?? true
       })
+      const totalTextCount = paragraphs.reduce((sum, paragraph) => sum + countTextUnits(paragraph), 0)
+      const paragraphCount = paragraphs.length
+      const pureTextSendMode = config.pureTextSendMode || 'single'
+      const expectedImageCount = !post.hasImages && pureTextSendMode === 'image'
+        ? Math.max(splitParagraphsByLimit(paragraphs, config.imageTextLimit || 0).length, 1)
+        : 0
+
+      const enablePureTextStatPrompt = config.enablePureTextStatPrompt ?? true
+      const enablePureTextImageFooterStats = config.enablePureTextImageFooterStats ?? true
+      const summaryMessage = expectedImageCount > 0
+        ? `本博文共${totalTextCount}字，${paragraphCount}自然段。预计生成${expectedImageCount}张图片...`
+        : `本博文共${totalTextCount}字，${paragraphCount}自然段。`
 
       // 步骤 5：组装文本消息
       const textMessages = this.buildTextMessages(
@@ -101,8 +113,13 @@ export class LofterPlugin extends plugin {
 
       // 步骤 6：处理纯文本图片模式渲染
       const imageModeResult = await this.handlePureTextImageMode(
-        post, blogger, paragraphs, config, textMessages
+        post, blogger, paragraphs, config, textMessages, summaryMessage,
+        enablePureTextStatPrompt, enablePureTextImageFooterStats
       )
+
+      if (!imageModeResult.isImageMode && enablePureTextStatPrompt) {
+        textMessages.unshift(summaryMessage)
+      }
 
       // 步骤 7：非合并转发模式下，先发送文本消息
       if (config.sendMode !== 'forward') {
@@ -206,11 +223,17 @@ export class LofterPlugin extends plugin {
    * @param {Array} textMessages - 文本消息数组（渲染结果将追加到此数组）
    * @returns {Promise<{firstImagePath: string|null}>} 首图路径
    */
-  async handlePureTextImageMode(post, blogger, paragraphs, config, textMessages) {
+  async handlePureTextImageMode(post, blogger, paragraphs, config, textMessages, summaryMessage, enablePureTextStatPrompt, enablePureTextImageFooterStats) {
     let firstImagePath = null
+    const totalTextCount = paragraphs.reduce((sum, paragraph) => sum + countTextUnits(paragraph), 0)
+    const paragraphCount = paragraphs.length
 
     if (post.hasImages || (config.pureTextSendMode || 'single') !== 'image') {
-      return { firstImagePath }
+      return { firstImagePath, isImageMode: false }
+    }
+
+    if (enablePureTextStatPrompt) {
+      textMessages.unshift(summaryMessage)
     }
 
     try {
@@ -223,6 +246,9 @@ export class LofterPlugin extends plugin {
         blogId: blogger.blogId,
         avatarUrl: blogger.avatarUrl,
         paragraphs,
+        totalTextCount,
+        paragraphCount,
+        enablePureTextImageFooterStats,
         config,
         localFontFile,
         fontFamilyCSS
@@ -242,7 +268,7 @@ export class LofterPlugin extends plugin {
       textMessages.push(`${post.title}\n\n${paragraphs.join('\n\n')}`)
     }
 
-    return { firstImagePath }
+    return { firstImagePath, isImageMode: true }
   }
 
   /**

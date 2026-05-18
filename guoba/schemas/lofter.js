@@ -27,6 +27,20 @@ export default [
     component: 'Switch'
   },
   {
+    field: 'lofter.enablePureTextStatPrompt',
+    label: '纯文统计提示',
+    bottomLabel: '解析纯文博文时发送字数、自然段和预计图片数量提示',
+    component: 'Switch',
+    defaultValue: true
+  },
+  {
+    field: 'lofter.enablePureTextImageFooterStats',
+    label: '纯文图片页脚统计',
+    bottomLabel: '纯文图片模式下在每张图的页脚显示总字数、自然段和当前页字数',
+    component: 'Switch',
+    defaultValue: true
+  },
+  {
     field: 'lofter.sendMode',
     label: '发送模式',
     bottomLabel: '选择消息发送的方式',
