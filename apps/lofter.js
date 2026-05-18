@@ -269,7 +269,8 @@ export class LofterPlugin extends plugin {
     const tempDir = getTempDir()
 
     for (let i = 0; i < post.photoLinks.length; i++) {
-      const result = await processImage(i, i, post.photoLinks.length, {
+      const photoLink = post.photoLinks[i]
+      const result = await processImage(photoLink, i, post.photoLinks.length, {
         blogger, post, config, tempDir
       })
 
