@@ -106,6 +106,15 @@ export class LofterPlugin extends plugin {
         ? `本博文共${totalTextCount}字，${paragraphCount}自然段。预计生成${expectedImageCount}张图片...`
         : `本博文共${totalTextCount}字，${paragraphCount}自然段。`
 
+      const sendStatOutsideForward = config.sendMode === 'forward' && !post.hasImages && enablePureTextStatPrompt
+      if (sendStatOutsideForward) {
+        try {
+          await e.reply(summaryMessage)
+        } catch (err) {
+          logger.error('[Lofter解析] 发送纯文字统计消息失败', err)
+        }
+      }
+
       // 步骤 5：组装文本消息
       const textMessages = this.buildTextMessages(
         blogger, { ...post, publishDateTimeStr }, interaction, paragraphs, config
@@ -114,10 +123,10 @@ export class LofterPlugin extends plugin {
       // 步骤 6：处理纯文本图片模式渲染
       const imageModeResult = await this.handlePureTextImageMode(
         post, blogger, paragraphs, config, textMessages, summaryMessage,
-        enablePureTextStatPrompt, enablePureTextImageFooterStats
+        enablePureTextStatPrompt && !sendStatOutsideForward, enablePureTextImageFooterStats
       )
 
-      if (!imageModeResult.isImageMode && enablePureTextStatPrompt) {
+      if (!imageModeResult.isImageMode && enablePureTextStatPrompt && !sendStatOutsideForward) {
         textMessages.unshift(summaryMessage)
       }
 
