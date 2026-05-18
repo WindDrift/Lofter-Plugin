@@ -1,3 +1,11 @@
+/**
+ * @module apps/update
+ * @description Lofter 插件更新模块
+ *
+ * 提供 #更新Lofter 指令，通过 git pull 拉取最新代码并自动重启 Bot。
+ * 仅 Bot 主人（master）有权限执行此操作。
+ */
+
 import plugin from '../../../lib/plugins/plugin.js'
 import { exec } from 'node:child_process'
 import { promisify } from 'node:util'
@@ -5,10 +13,16 @@ import { dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const execAsync = promisify(exec)
-// 获取当前文件所在目录，即 apps 目录
+
+/** 插件根目录（Lofter-Plugin） */
 const __dirname = dirname(fileURLToPath(import.meta.url))
-// 插件根目录，即 Lofter-Plugin 目录
 const pluginPath = dirname(__dirname)
+
+/** 更新日志最大输出长度，防止合并消息超出 QQ 长度限制 */
+const MAX_LOG_LENGTH = 2000
+
+/** 错误消息最大输出长度 */
+const MAX_ERROR_LENGTH = 500
 
 export class LofterUpdate extends plugin {
   constructor() {
@@ -27,8 +41,12 @@ export class LofterUpdate extends plugin {
     })
   }
 
+  /**
+   * 执行插件更新操作
+   * @param {object} e - 云崽消息事件对象
+   * @returns {Promise<boolean>} 是否成功处理
+   */
   async updatePlugin(e) {
-    // 权限校验：仅允许 Bot 主人执行更新操作
     if (!e.isMaster) {
       await e.reply('只有主人才能更新 Lofter 插件哦~')
       return true
@@ -37,53 +55,73 @@ export class LofterUpdate extends plugin {
     await e.reply('🍼开始尝试拉取 Lofter-Plugin 最新代码...')
 
     try {
-      // 执行 git pull 命令，工作目录设置在插件根目录
-      const { stdout, stderr } = await execAsync('git pull', { cwd: pluginPath })
+      const { stdout } = await execAsync('git pull', { cwd: pluginPath })
 
+      // 判断是否已经是最新版本
       if (stdout.includes('Already up to date.') || stdout.includes('已经是最新')) {
         await e.reply('目前已经是最新版本了，无需更新~')
         return true
       }
 
-      // 获取此次拉取的所有更新提交记录作为更新日志（使用 ORIG_HEAD..HEAD 获取本次拉取合并的所有提交）
-      let logMsg = ''
-      try {
-        const { stdout: logStdout } = await execAsync('git log ORIG_HEAD..HEAD --pretty=format:"* %h - %s"', { cwd: pluginPath })
-        if (logStdout) {
-          logMsg = logStdout.trim()
-          // 限制输出最大长度，防止一次更新产生过多日志导致合并消息超出长度限制发送失败
-          if (logMsg.length > 2000) {
-            logMsg = logMsg.substring(0, 2000) + '\n...（及更多内容）'
-          }
-        }
-      } catch (logErr) {}
+      // 获取本次更新的提交日志
+      const logMsg = await this.fetchUpdateLog()
 
       let msg = '✅ Lofter-Plugin 更新成功！'
       if (logMsg) {
         msg += '\n\n【最新更新日志】\n' + logMsg
       }
       msg += '\n\n🔄正在为您重启 Bot...'
-      
+
       await e.reply(msg)
 
-      // 延迟 1 秒后重启，优先尝试 npm run restart，若失败且环境不受支持则直接退出依赖外部守护程序重启
-      setTimeout(async () => {
-        try {
-          await execAsync('npm run restart', { cwd: process.cwd() })
-        } catch (error) {
-          process.exit(0)
-        }
-      }, 1000)
+      // 延迟 1 秒后重启 Bot
+      this.scheduleRestart()
 
       return true
     } catch (err) {
       logger.error('[Lofter插件更新] 更新失败', err)
       let errorMsg = '❌ 更新失败！请检查控制台日志。\n' + err.message
-      if (errorMsg.length > 500) {
-        errorMsg = errorMsg.substring(0, 500) + '...'
+      if (errorMsg.length > MAX_ERROR_LENGTH) {
+        errorMsg = errorMsg.substring(0, MAX_ERROR_LENGTH) + '...'
       }
       await e.reply(errorMsg)
       return true
     }
+  }
+
+  /**
+   * 获取本次更新的 git 提交日志
+   * @returns {Promise<string|null>} 格式化的提交日志，无更新时返回 null
+   */
+  async fetchUpdateLog() {
+    try {
+      const { stdout } = await execAsync(
+        'git log ORIG_HEAD..HEAD --pretty=format:"* %h - %s"',
+        { cwd: pluginPath }
+      )
+      if (!stdout) return null
+
+      let logMsg = stdout.trim()
+      if (logMsg.length > MAX_LOG_LENGTH) {
+        logMsg = logMsg.substring(0, MAX_LOG_LENGTH) + '\n...（及更多内容）'
+      }
+      return logMsg
+    } catch (logErr) {
+      return null
+    }
+  }
+
+  /**
+   * 延迟 1 秒后重启 Bot 进程
+   * 优先尝试 npm run restart，若失败则直接退出进程（依赖外部守护程序重启）
+   */
+  scheduleRestart() {
+    setTimeout(async () => {
+      try {
+        await execAsync('npm run restart', { cwd: process.cwd() })
+      } catch (error) {
+        process.exit(0)
+      }
+    }, 1000)
   }
 }
