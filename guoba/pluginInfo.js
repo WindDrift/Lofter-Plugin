@@ -1,4 +1,11 @@
-// 定义并导出本插件在锅巴面板前端展示的基础信息（如名称、描述、作者等）
+/**
+ * @module guoba/pluginInfo
+ * @description 插件元信息定义
+ *
+ * 定义并导出本插件在锅巴面板前端展示的基础信息，
+ * 包括名称、描述、作者、版本号、图标等。
+ */
+
 export default {
   name: 'Lofter-Plugin',
   title: 'Lofter解析插件',
