@@ -1,0 +1,38 @@
+{
+  "root": true,
+  "env": {
+    "node": true,
+    "es2022": true
+  },
+  "parserOptions": {
+    "ecmaVersion": 2022,
+    "sourceType": "module"
+  },
+  "globals": {
+    "logger": "readonly",
+    "segment": "readonly",
+    "plugin": "readonly",
+    "process": "readonly",
+    "global": "readonly",
+    "console": "readonly",
+    "setTimeout": "readonly",
+    "clearTimeout": "readonly",
+    "setInterval": "readonly",
+    "clearInterval": "readonly"
+  },
+  "rules": {
+    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+    "no-undef": "error",
+    "no-console": "off",
+    "no-var": "error",
+    "prefer-const": "warn",
+    "eqeqeq": ["warn", "always"],
+    "curly": ["warn", "multi-line"],
+    "no-throw-literal": "warn"
+  },
+  "ignorePatterns": [
+    "node_modules/",
+    "temp/",
+    "data/"
+  ]
+}

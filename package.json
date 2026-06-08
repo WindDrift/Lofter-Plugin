@@ -1,14 +1,29 @@
 {
   "name": "lofter-plugin",
   "version": "1.0.0",
-  "description": "解析Lofter链接并发送图文",
+  "description": "解析 Lofter 博文链接并自动发送图文到 QQ 群/私聊。Lofter blog post parser for Yunzai-Bot v3 / TRSS-Yunzai.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
-  "keywords": [],
+  "keywords": [
+    "yunzai",
+    "lofter",
+    "qq-bot",
+    "qq",
+    "bot",
+    "plugin",
+    "miao-yunzai",
+    "trss-yunzai"
+  ],
   "author": "WindDrift",
-  "license": "ISC",
+  "license": "GPL-3.0",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "dependencies": {
     "node-fetch": "^2.7.0"
   },

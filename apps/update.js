@@ -2,8 +2,8 @@
  * @module apps/update
  * @description Lofter 插件更新模块
  *
- * 提供 #更新Lofter 指令，通过 git pull 拉取最新代码并自动重启 Bot。
- * 仅 Bot 主人（master）有权限执行此操作。
+ * 增强点（F-07）：scheduleRestart 优先尝试 Yunzai 优雅退出钩子，
+ * 失败时回退到 npm run restart，最差情况硬退 process.exit(0)
  */
 
 import plugin from '../../../lib/plugins/plugin.js'
@@ -43,8 +43,8 @@ export class LofterUpdate extends plugin {
 
   /**
    * 执行插件更新操作
-   * @param {object} e - 云崽消息事件对象
-   * @returns {Promise<boolean>} 是否成功处理
+   * @param {object} e
+   * @returns {Promise<boolean>}
    */
   async updatePlugin(e) {
     if (!e.isMaster) {
@@ -57,13 +57,11 @@ export class LofterUpdate extends plugin {
     try {
       const { stdout } = await execAsync('git pull', { cwd: pluginPath })
 
-      // 判断是否已经是最新版本
       if (stdout.includes('Already up to date.') || stdout.includes('已经是最新')) {
         await e.reply('目前已经是最新版本了，无需更新~')
         return true
       }
 
-      // 获取本次更新的提交日志
       const logMsg = await this.fetchUpdateLog()
 
       let msg = '✅ Lofter-Plugin 更新成功！'
@@ -73,10 +71,7 @@ export class LofterUpdate extends plugin {
       msg += '\n\n🔄正在为您重启 Bot...'
 
       await e.reply(msg)
-
-      // 延迟 1 秒后重启 Bot
       this.scheduleRestart()
-
       return true
     } catch (err) {
       logger.error('[Lofter插件更新] 更新失败', err)
@@ -91,7 +86,7 @@ export class LofterUpdate extends plugin {
 
   /**
    * 获取本次更新的 git 提交日志
-   * @returns {Promise<string|null>} 格式化的提交日志，无更新时返回 null
+   * @returns {Promise<string|null>}
    */
   async fetchUpdateLog() {
     try {
@@ -100,7 +95,6 @@ export class LofterUpdate extends plugin {
         { cwd: pluginPath }
       )
       if (!stdout) return null
-
       let logMsg = stdout.trim()
       if (logMsg.length > MAX_LOG_LENGTH) {
         logMsg = logMsg.substring(0, MAX_LOG_LENGTH) + '\n...（及更多内容）'
@@ -112,16 +106,41 @@ export class LofterUpdate extends plugin {
   }
 
   /**
-   * 延迟 1 秒后重启 Bot 进程
-   * 优先尝试 npm run restart，若失败则直接退出进程（依赖外部守护程序重启）
+   * 延迟 1 秒后重启 Bot 进程（F-07 优雅退出）
+   * 优先级：
+   *  1) 尝试 Yunzai 全局退出钩子（global.Bot?.exit / process.emit('exit')）
+   *  2) 尝试 npm run restart
+   *  3) 硬退 process.exit(0)（依赖外部守护程序重启）
    */
   scheduleRestart() {
     setTimeout(async () => {
+      // 方式 1：尝试 Yunzai 优雅退出
+      try {
+        if (typeof global.Bot?.exit === 'function') {
+          logger.mark('[Lofter插件更新] 调用 Yunzai 优雅退出钩子')
+          global.Bot.exit()
+          return
+        }
+        if (typeof global.process.send === 'function') {
+          // 通过 IPC 通知父进程重启
+          global.process.send({ type: 'restart' })
+          return
+        }
+      } catch (err) {
+        logger.debug('[Lofter插件更新] 优雅退出失败，回退 npm restart', err)
+      }
+
+      // 方式 2：npm run restart
       try {
         await execAsync('npm run restart', { cwd: process.cwd() })
-      } catch (error) {
-        process.exit(0)
+        return
+      } catch (err) {
+        logger.debug('[Lofter插件更新] npm run restart 失败，回退 process.exit', err)
       }
+
+      // 方式 3：硬退（依赖 pm2/systemd 等守护）
+      logger.mark('[Lofter插件更新] 硬退进程，请确保有守护程序')
+      process.exit(0)
     }, 1000)
   }
 }
