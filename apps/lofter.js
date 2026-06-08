@@ -34,11 +34,11 @@ import { formatDateTime, runWithConcurrency, sanitizeFileName } from '../lib/uti
 /** @typedef {import('../lib/utils.js').PostInfo} PostInfo */
 /** @typedef {import('../lib/utils.js').InteractionInfo} InteractionInfo */
 
-/** Lofter 博文链接正则表达式（全局唯一事实源） */
-export const LOFTER_URL_REGEX = /https?:\/\/[a-zA-Z0-9-]+\.lofter\.com\/post\/[a-zA-Z0-9_]+/i
+/** Lofter 博文链接正则表达式（模块内私有） */
+const LOFTER_URL_REGEX = /https?:\/\/[a-zA-Z0-9-]+\.lofter\.com\/post\/[a-zA-Z0-9_]+/i
 
-/** 与 LOFTER_URL_REGEX 等价的字符串模式（供 Yunzai rule.reg 使用） */
-export const LOFTER_URL_PATTERN = 'https?:\\/\\/[a-zA-Z0-9-]+\\.lofter\\.com\\/post\\/[a-zA-Z0-9_]+'
+/** 与 LOFTER_URL_REGEX 等价的字符串模式（供 Yunzai rule.reg 使用，模块内私有） */
+const LOFTER_URL_PATTERN = 'https?:\\/\\/[a-zA-Z0-9-]+\\.lofter\\.com\\/post\\/[a-zA-Z0-9_]+'
 
 /** 图片并发下载数 */
 const IMAGE_CONCURRENCY = 3
