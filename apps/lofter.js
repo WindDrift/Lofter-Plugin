@@ -37,6 +37,9 @@ import { formatDateTime, runWithConcurrency, sanitizeFileName } from '../lib/uti
 /** Lofter 博文链接正则表达式（全局唯一事实源） */
 export const LOFTER_URL_REGEX = /https?:\/\/[a-zA-Z0-9-]+\.lofter\.com\/post\/[a-zA-Z0-9_]+/i
 
+/** 与 LOFTER_URL_REGEX 等价的字符串模式（供 Yunzai rule.reg 使用） */
+export const LOFTER_URL_PATTERN = 'https?:\\/\\/[a-zA-Z0-9-]+\\.lofter\\.com\\/post\\/[a-zA-Z0-9_]+'
+
 /** 图片并发下载数 */
 const IMAGE_CONCURRENCY = 3
 
@@ -78,7 +81,7 @@ export class LofterPlugin extends plugin {
       priority: 5000,
       rule: [
         {
-          reg: LOFTER_URL_REGEX,
+          reg: LOFTER_URL_PATTERN,
           fnc: 'parseLofter'
         }
       ]
@@ -91,12 +94,37 @@ export class LofterPlugin extends plugin {
    * @returns {Promise<boolean>}
    */
   async parseLofter(e) {
-    const config = Config.getInstance().getDefSet('lofter')
-    if (!config.autoParse) return false
+    // 诊断：确认 handler 已被 Yunzai 路由触发
+    logger.debug?.(`[Lofter解析] parseLofter 已触发, msg=${String(e?.msg).slice(0, 80)}`)
+
+    // 防御性配置加载：优先单例，失败时回退到 new Config()
+    let config
+    try {
+      const ConfigClass = Config
+      if (typeof ConfigClass.getInstance === 'function') {
+        config = ConfigClass.getInstance().getDefSet('lofter')
+      } else {
+        config = new ConfigClass().getDefSet('lofter')
+      }
+    } catch (cfgErr) {
+      logger.error('[Lofter解析] 配置加载失败，使用空配置继续', cfgErr)
+      config = {}
+    }
+    if (!config || typeof config !== 'object') {
+      logger.error('[Lofter解析] 配置加载结果异常，放弃本次解析')
+      return false
+    }
+    if (!config.autoParse) {
+      logger.debug?.('[Lofter解析] autoParse=false，跳过')
+      return false
+    }
 
     // Step 1: 提取 URL
     const url = extractLofterUrl(e.msg)
-    if (!url) return false
+    if (!url) {
+      logger.debug?.('[Lofter解析] 未能从消息中提取 Lofter URL')
+      return false
+    }
     logger.info(`[Lofter解析] 检测到链接: ${url}`)
 
     let prepMsg = null
