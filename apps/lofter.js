@@ -280,6 +280,8 @@ export class LofterPlugin extends plugin {
         publishTime: formatDateTime(post.publishTime),
         blogId: blogger.blogId,
         avatarUrl: blogger.avatarUrl,
+        // 传博文链接作为头像下载的 Referer，规避 Lofter CDN 防盗链
+        refererUrl: post.url,
         paragraphs: textCtx.paragraphs,
         totalTextCount: textCtx.totalTextCount,
         paragraphCount: textCtx.paragraphCount,
