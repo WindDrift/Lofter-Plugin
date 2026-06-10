@@ -55,6 +55,12 @@ export class LofterUpdate extends plugin {
     await e.reply('🍼开始尝试拉取 Lofter-Plugin 最新代码...')
 
     try {
+      try {
+        await execAsync('git fetch origin --prune', { cwd: pluginPath })
+      } catch (fetchErr) {
+        logger.debug('[Lofter插件更新] fetch origin 失败，继续执行 pull', fetchErr)
+      }
+
       const { stdout } = await execAsync('git pull', { cwd: pluginPath })
 
       if (stdout.includes('Already up to date.') || stdout.includes('已经是最新')) {
