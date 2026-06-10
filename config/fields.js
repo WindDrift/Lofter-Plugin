@@ -32,14 +32,9 @@ export const LOFTER_FIELDS = [
     group: '通用设置', order: 20
   },
   {
-    key: 'enablePureTextStatPrompt', type: 'switch', default: true,
-    label: '纯文统计提示', bottomLabel: '解析纯文博文时发送字数、自然段和预计图片数量提示',
-    group: '通用设置', order: 30
-  },
-  {
     key: 'enablePureTextImageFooterStats', type: 'switch', default: true,
     label: '纯文图片页脚统计', bottomLabel: '纯文图片模式下在每张图的页脚显示总字数、自然段和当前页字数',
-    group: '通用设置', order: 40
+    group: '通用设置', order: 30
   },
   {
     key: 'sendMode', type: 'select', default: 'forward',
@@ -48,7 +43,7 @@ export const LOFTER_FIELDS = [
       { label: '合并转发', value: 'forward' },
       { label: '逐条发送', value: 'normal' }
     ],
-    group: '通用设置', order: 50
+    group: '通用设置', order: 40
   },
   {
     key: 'pureTextSendMode', type: 'select', default: 'single',
@@ -58,49 +53,94 @@ export const LOFTER_FIELDS = [
       { label: '多消息 (每段拆分一条，限合并转发)', value: 'multi' },
       { label: '图片模式 (转为渲染长图)', value: 'image' }
     ],
-    group: '通用设置', order: 60
+    group: '通用设置', order: 50
   },
   {
     key: 'timeout', type: 'number', default: 30, min: 5, max: 120,
     label: '超时时间', bottomLabel: '解析请求的超时时间（秒）',
-    group: '通用设置', order: 70
+    group: '通用设置', order: 60
   },
 
-  // ============== 发送设置 ==============
+  // ============== 发送内容管理 ==============
   {
-    key: 'tagLinks', type: 'switch', default: true,
-    label: '标签链接', bottomLabel: '解析结果中显示带链接的标签列表消息',
-    group: '发送设置', order: 10
+    key: 'sendBloggerInfo', type: 'switch', default: true,
+    label: '发送博主信息', bottomLabel: '是否发送博主昵称、博客名和博主ID',
+    group: '发送内容管理', order: 10
+  },
+  {
+    key: 'sendPostInfo', type: 'switch', default: true,
+    label: '发送博文基础信息', bottomLabel: '是否发送博文链接、发布时间、博文ID；标签链接关闭时普通标签也显示在这里',
+    group: '发送内容管理', order: 20
+  },
+  {
+    key: 'sendTagLinks', type: 'switch', default: true,
+    label: '发送标签链接', bottomLabel: '开启时单独发送带链接的标签消息；关闭时在博文基础信息中显示普通标签',
+    group: '发送内容管理', order: 30
+  },
+  {
+    key: 'sendInteraction', type: 'switch', default: true,
+    label: '发送互动数据', bottomLabel: '是否发送回复、点赞、推荐、收藏、热度',
+    group: '发送内容管理', order: 40
+  },
+  {
+    key: 'sendPostTitle', type: 'switch', default: true,
+    label: '发送正文标题', bottomLabel: '是否发送正文标题；纯文图片模式中长图仍保留标题',
+    group: '发送内容管理', order: 50
+  },
+  {
+    key: 'sendPostBody', type: 'switch', default: true,
+    label: '发送正文', bottomLabel: '是否发送正文文本或纯文长图',
+    group: '发送内容管理', order: 60
+  },
+  {
+    key: 'sendImages', type: 'switch', default: true,
+    label: '发送图片', bottomLabel: '是否发送图片本体；关闭后仍可单独发送原图链接',
+    group: '发送内容管理', order: 70
+  },
+  {
+    key: 'sendImageLinks', type: 'switch', default: true,
+    label: '发送原图链接', bottomLabel: '是否为每张图片发送对应的原图链接，和发送图片本体相互独立',
+    group: '发送内容管理', order: 80
+  },
+  {
+    key: 'sendImageLimitTip', type: 'switch', default: true,
+    label: '发送大小限制提示', bottomLabel: '图片触发大小限制时，是否发送全局调整提示',
+    group: '发送内容管理', order: 90
+  },
+  {
+    key: 'sendParseStats', type: 'switch', default: true,
+    label: '发送解析统计', bottomLabel: '是否发送字数、自然段、图片数、耗时、今日和本群解析次数',
+    group: '发送内容管理', order: 100
   },
   {
     key: 'sendOriginal', type: 'switch', default: false,
     label: '发送原图', bottomLabel: '是否发送原始图片（可能会增加流量消耗）',
-    group: '发送设置', order: 20
+    group: '发送内容管理', order: 110
   },
   {
     key: 'sendFirstImage', type: 'switch', default: false,
     label: '发送首图', bottomLabel: '解析到有图片时，单独发第一张图到聊天（可做合并转发的预览）',
-    group: '发送设置', order: 30
+    group: '发送内容管理', order: 120
   },
   {
     key: 'enableImageSizeLimit', type: 'switch', default: true,
     label: '图片大小限制', bottomLabel: '超出阈值的图片将不发送，仅发送链接，可有效防止因单图过大导致机器人进程崩溃',
-    group: '发送设置', order: 40
+    group: '发送内容管理', order: 130
   },
   {
     key: 'imageSizeLimit', type: 'number', default: 8, min: 1, max: 50,
     label: '图片大小限制阈值', bottomLabel: '单位：MB，仅当开启图片大小限制时生效',
-    group: '发送设置', order: 50
+    group: '发送内容管理', order: 140
   },
   {
     key: 'sendThumbnail', type: 'switch', default: true,
     label: '发送缩略图', bottomLabel: '配合大小限制，对超出阈值的图片尝试发送低画质缩略图',
-    group: '发送设置', order: 60
+    group: '发送内容管理', order: 150
   },
   {
-    key: 'enableImageCountPrompt', type: 'switch', default: true,
+    key: 'imageCountPrompt', type: 'switch', default: true,
     label: '多图数量提示', bottomLabel: '在解析到多图时发送数量提示',
-    group: '发送设置', order: 70
+    group: '发送内容管理', order: 160
   },
 
   // ============== 纯文图片模式设置 ==============
