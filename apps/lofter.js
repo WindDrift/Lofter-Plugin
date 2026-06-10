@@ -10,6 +10,9 @@
  */
 
 import plugin from '../../../lib/plugins/plugin.js'
+import { execFileSync } from 'child_process'
+import { dirname } from 'path'
+import { fileURLToPath } from 'url'
 import Config from '../components/Config.js'
 import { fetchPage, cleanupTempFiles, cleanupFile } from '../lib/fetcher.js'
 import { parsePageData, extractPostInfo, extractImageUrl } from '../lib/parser.js'
@@ -43,6 +46,15 @@ const LOFTER_URL_PATTERN = 'https?:\\/\\/[a-zA-Z0-9-]+\\.lofter\\.com\\/post\\/[
 
 /** 图片并发下载数 */
 const IMAGE_CONCURRENCY = 3
+
+/** 开发者模式提示 */
+const DEVELOPER_MODE_MESSAGE = '你正处于开发者模式，较正式版有以下新功能：'
+
+/** 开发者模式无差异提示 */
+const DEVELOPER_MODE_SAME_MESSAGE = '你正处于开发者模式，当前与正式版一致。'
+
+/** 插件仓库路径 */
+const pluginPath = dirname(dirname(fileURLToPath(import.meta.url)))
 
 /** 当日内存解析计数（无需持久化） */
 const parseCounter = {
@@ -183,11 +195,13 @@ export class LofterPlugin extends plugin {
         const counts = this.recordSuccessfulParse(e)
         if (config.sendParseStats) msgList.push(this.buildStatsMessage({ stats, counts, startedAt }))
         await this.stepSendForward({ e, msgList, post, blogger, config, imageResult })
+        await this.sendDeveloperModeMessage(e)
       } else {
         for (const msg of msgList) await this.sendNormalMessage(e, msg, config)
         const counts = this.recordSuccessfulParse(e)
         if (config.sendParseStats) await e.reply(this.buildStatsMessage({ stats, counts, startedAt }))
         await this.cleanupImages(post, blogger)
+        await this.sendDeveloperModeMessage(e)
       }
     } catch (err) {
       // F-03 分类异常
@@ -504,5 +518,51 @@ export class LofterPlugin extends plugin {
     parseCounter.groups.set(groupKey, groupCount)
 
     return { today: parseCounter.today, group: groupCount }
+  }
+
+  isDeveloperMode() {
+    try {
+      const branch = execFileSync('git', ['branch', '--show-current'], {
+        cwd: pluginPath,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore']
+      }).trim()
+      return branch === 'dev'
+    } catch (err) {
+      logger.debug?.(`[Lofter解析] 获取当前 Git 分支失败: ${err.message}`)
+      return false
+    }
+  }
+
+  getDeveloperCommitMessages() {
+    try {
+      const output = execFileSync('git', ['log', '--format=%cd%x09%H%x09%s', '--date=format:%Y-%m-%d %H:%M:%S', 'main..dev'], {
+        cwd: pluginPath,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore']
+      }).trim()
+      if (!output) return []
+      return output.split('\n').map(line => {
+        const [time, hash, ...subjectParts] = line.split('\t')
+        const shortHash = hash.slice(-7)
+        return `${time} ${shortHash} ${subjectParts.join('\t')}`
+      })
+    } catch (err) {
+      logger.debug?.(`[Lofter解析] 对比 dev 与 main 分支失败: ${err.message}`)
+      return []
+    }
+  }
+
+  async sendDeveloperModeMessage(e) {
+    if (!this.isDeveloperMode()) return
+    try {
+      const commits = this.getDeveloperCommitMessages()
+      const message = commits.length > 0
+        ? `${DEVELOPER_MODE_MESSAGE}\n${commits.join('\n')}`
+        : DEVELOPER_MODE_SAME_MESSAGE
+      await e.reply(message)
+    } catch (err) {
+      logger.error('[Lofter解析] 发送开发者模式提示失败', err)
+    }
   }
 }
