@@ -536,7 +536,8 @@ export class LofterPlugin extends plugin {
 
   getDeveloperCommitMessages() {
     try {
-      const output = execFileSync('git', ['log', '--format=%cd%x09%H%x09%s', '--date=format:%Y-%m-%d %H:%M:%S', 'main..dev'], {
+      const baseRef = this.resolveMainRef()
+      const output = execFileSync('git', ['log', '--format=%cd%x09%H%x09%s', '--date=format:%Y-%m-%d %H:%M:%S', `${baseRef}..dev`], {
         cwd: pluginPath,
         encoding: 'utf8',
         stdio: ['ignore', 'pipe', 'ignore']
@@ -550,6 +551,19 @@ export class LofterPlugin extends plugin {
     } catch (err) {
       logger.debug?.(`[Lofter解析] 对比 dev 与 main 分支失败: ${err.message}`)
       return []
+    }
+  }
+
+  resolveMainRef() {
+    try {
+      execFileSync('git', ['rev-parse', '--verify', 'origin/main'], {
+        cwd: pluginPath,
+        encoding: 'utf8',
+        stdio: ['ignore', 'ignore', 'ignore']
+      })
+      return 'origin/main'
+    } catch (err) {
+      return 'main'
     }
   }
 
