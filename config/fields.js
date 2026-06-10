@@ -33,7 +33,7 @@ export const LOFTER_FIELDS = [
   },
   {
     key: 'enablePureTextStatPrompt', type: 'switch', default: true,
-    label: '纯文统计提示', bottomLabel: '解析纯文博文时发送字数、自然段和预计图片数量提示',
+    label: '纯文统计提示', bottomLabel: '保留旧配置项；解析统计现在固定在结果末尾发送',
     group: '通用设置', order: 30
   },
   {

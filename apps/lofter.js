@@ -21,12 +21,13 @@ import {
   buildPostInfoMessage,
   buildTagLinksMessage,
   buildInteractionMessage,
-  buildImageLinksMessage,
+  buildImageOriginMessage,
+  buildParseStatsMessage,
   makeForwardMsg,
   sendImageNormal,
   recallMessage
 } from '../lib/messageBuilder.js'
-import { formatDateTime, runWithConcurrency, sanitizeFileName } from '../lib/utils.js'
+import { formatDate, formatDateTime, runWithConcurrency, sanitizeFileName } from '../lib/utils.js'
 
 /** @typedef {import('../lib/utils.js').LofterConfig} LofterConfig */
 /** @typedef {import('../lib/utils.js').PostExtracted} PostExtracted */
@@ -42,6 +43,13 @@ const LOFTER_URL_PATTERN = 'https?:\\/\\/[a-zA-Z0-9-]+\\.lofter\\.com\\/post\\/[
 
 /** 图片并发下载数 */
 const IMAGE_CONCURRENCY = 3
+
+/** 当日内存解析计数（无需持久化） */
+const parseCounter = {
+  date: '',
+  today: 0,
+  groups: new Map()
+}
 
 /**
  * 从文本中提取第一个 Lofter 博文 URL
@@ -126,13 +134,18 @@ export class LofterPlugin extends plugin {
       return false
     }
     logger.info(`[Lofter解析] 检测到链接: ${url}`)
+    const startedAt = Date.now()
 
     let prepMsg = null
     try {
       // Step 2: 抓取并解析
       const postInfo = await this.stepFetchAndParse({ url, timeout: config.timeout || 30 })
       const { blogger, post, interaction } = postInfo
-      const postWithTime = { ...post, publishDateTimeStr: formatDateTime(post.publishTime) }
+      const postWithTime = {
+        ...post,
+        publishDateTimeStr: formatDateTime(post.publishTime),
+        inlineTags: config.tagLinks ? [] : post.tagList
+      }
 
       // Step 3: 发送准备提示
       prepMsg = await this.stepSendPrepare(e, { post, url })
@@ -145,34 +158,35 @@ export class LofterPlugin extends plugin {
 
       // Step 6: 纯文图片模式渲染
       const imageMode = await this.stepRenderImageMode({
-        post, blogger, config, textCtx, textMessages, summaryMessage: textCtx.summaryMessage
+        post, blogger, config, textCtx, textMessages
       })
-
-      if (!imageMode.isImageMode && textCtx.enablePureTextStatPrompt && !textCtx.sendStatOutsideForward) {
-        textMessages.unshift(textCtx.summaryMessage)
-      }
-
-      // Step 7: 非合并转发模式先发文本
-      if (config.sendMode !== 'forward') {
-        for (const msg of textMessages) {
-          await e.reply(msg)
-        }
-      }
 
       // Step 8: 图片下载与发送
       const msgList = [...textMessages]
-      const imageResult = await this.stepHandleImages({ e, post, blogger, config, msgList, existingFirstImagePath: imageMode.firstImagePath })
+      const imageResult = await this.stepHandleImages({ post, blogger, config, msgList, existingFirstImagePath: imageMode.firstImagePath })
 
       // Step 9: 大小限制提示
       if (imageResult.isImageSizeLimitTriggered) {
         const tipMsg = '要调整/关闭图片大小限制功能，请前往锅巴面板配置。'
-        if (config.sendMode === 'forward') msgList.push(tipMsg)
-        else await e.reply(tipMsg)
+        msgList.push(tipMsg)
       }
 
-      // Step 10: 合并转发模式发送
+      const stats = {
+        textCount: textCtx.totalTextCount,
+        paragraphCount: textCtx.paragraphCount,
+        imageCount: post.photoLinks.length
+      }
+
+      // Step 10: 发送结果
       if (config.sendMode === 'forward') {
-        await this.stepSendForward({ e, msgList, post, config, imageResult })
+        const counts = this.recordSuccessfulParse(e)
+        msgList.push(this.buildStatsMessage({ stats, counts, startedAt }))
+        await this.stepSendForward({ e, msgList, post, blogger, config, imageResult })
+      } else {
+        for (const msg of msgList) await this.sendNormalMessage(e, msg, config)
+        const counts = this.recordSuccessfulParse(e)
+        await e.reply(this.buildStatsMessage({ stats, counts, startedAt }))
+        await this.cleanupImages(post, blogger)
       }
     } catch (err) {
       // F-03 分类异常
@@ -220,16 +234,10 @@ export class LofterPlugin extends plugin {
     const expectedImageCount = !post.hasImages && pureTextSendMode === 'image'
       ? Math.max(splitParagraphsByLimit(paragraphs, config.imageTextLimit || 0).length, 1)
       : 0
-    const enablePureTextStatPrompt = config.enablePureTextStatPrompt ?? true
     const enablePureTextImageFooterStats = config.enablePureTextImageFooterStats ?? true
-    const summaryMessage = expectedImageCount > 0
-      ? `本博文共${totalTextCount}字，${paragraphCount}自然段。预计生成${expectedImageCount}张图片...`
-      : `本博文共${totalTextCount}字，${paragraphCount}自然段。`
-    const sendStatOutsideForward = config.sendMode === 'forward' && !post.hasImages && enablePureTextStatPrompt
     return {
       paragraphs, totalTextCount, paragraphCount,
-      enablePureTextStatPrompt, enablePureTextImageFooterStats,
-      summaryMessage, sendStatOutsideForward
+      expectedImageCount, enablePureTextImageFooterStats
     }
   }
 
@@ -241,6 +249,8 @@ export class LofterPlugin extends plugin {
     if (config.tagLinks && post.tagList && post.tagList.length > 0) {
       messages.push(buildTagLinksMessage(post.tagList))
     }
+    messages.push(buildInteractionMessage(interaction))
+    messages.push(post.title)
 
     const pureTextSendMode = config.pureTextSendMode || 'single'
     const hasImages = post.hasImages
@@ -248,16 +258,9 @@ export class LofterPlugin extends plugin {
     if (!hasImages && pureTextSendMode === 'image') {
       // 图片模式由 stepRenderImageMode 单独处理
     } else if (!hasImages && pureTextSendMode === 'multi' && config.sendMode === 'forward') {
-      messages.push(post.title)
       paragraphs.forEach(p => messages.push(p))
     } else {
-      messages.push(`${post.title}\n\n${paragraphs.join('\n\n')}`)
-    }
-
-    messages.push(buildInteractionMessage(interaction))
-
-    if (hasImages) {
-      messages.push(buildImageLinksMessage(post.photoLinks))
+      messages.push(paragraphs.join('\n\n'))
     }
     return messages
   }
@@ -267,10 +270,6 @@ export class LofterPlugin extends plugin {
     if (post.hasImages || (config.pureTextSendMode || 'single') !== 'image') {
       return { firstImagePath: null, isImageMode: false }
     }
-    if (textCtx.enablePureTextStatPrompt && !textCtx.sendStatOutsideForward) {
-      textMessages.unshift(textCtx.summaryMessage)
-    }
-
     let firstImagePath = null
     try {
       const { localFontFile, fontFamilyCSS } = resolveFontConfig(config.imageFont || '')
@@ -294,17 +293,17 @@ export class LofterPlugin extends plugin {
         for (const imgPath of imagePaths) textMessages.push(segment.image(imgPath))
         firstImagePath = imagePaths[0]
       } else {
-        textMessages.push(`${post.title}\n\n${textCtx.paragraphs.join('\n\n')}`)
+        textMessages.push(textCtx.paragraphs.join('\n\n'))
       }
     } catch (renderErr) {
       logger.error('[Lofter解析] 生成纯文本长图失败：', renderErr)
-      textMessages.push(`${post.title}\n\n${textCtx.paragraphs.join('\n\n')}`)
+      textMessages.push(textCtx.paragraphs.join('\n\n'))
     }
     return { firstImagePath, isImageMode: true }
   }
 
   /** Step 8: 处理图片（P-01 并发下载） */
-  async stepHandleImages({ e, post, blogger, config, msgList, existingFirstImagePath }) {
+  async stepHandleImages({ post, blogger, config, msgList, existingFirstImagePath }) {
     const result = {
       firstImagePath: existingFirstImagePath || null,
       firstImageIsThumbnail: false,
@@ -329,14 +328,10 @@ export class LofterPlugin extends plugin {
       if (!r || r.__error || !r.success) {
         const name = r?.fileName || `图${i + 1}`
         const failMsg = r?.error || r?.reason || '下载失败（已重试）'
-        if (config.sendMode !== 'forward') {
-          await e.reply(`图片 ${name} ${failMsg}。`)
-        } else {
-          msgList.push(`图片 ${name} ${failMsg}。`)
-        }
+        msgList.push(`图片 ${name} ${failMsg}。`)
         continue
       }
-      await this.dispatchImageResult({ e, r, i, total, config, msgList, result })
+      this.dispatchImageResult({ r, i, msgList, result })
     }
     return result
   }
@@ -345,50 +340,41 @@ export class LofterPlugin extends plugin {
    * 内部：根据图片处理结果分支发送到 msgList 或 e.reply
    * @param {object} args
    */
-  async dispatchImageResult({ e, r, i, total, config, msgList, result }) {
+  dispatchImageResult({ r, i, msgList, result }) {
+    const originMsg = buildImageOriginMessage(i, r.imgUrl)
     if (r.isThumbnail) {
       result.isImageSizeLimitTriggered = true
       result.successImageCount++
-      const combined = [segment.image(r.thumbnailUrl), r.limitMsg]
-      if (config.sendMode === 'forward') {
-        msgList.push(combined)
-        if (!result.firstImagePath) {
-          result.firstImagePath = r.thumbnailUrl
-          result.firstImageIsThumbnail = true
-          result.firstImageThumbnailMsg = r.limitMsg
-        }
-      } else {
-        await e.reply(combined)
+      const combined = [segment.image(r.thumbnailUrl), `\n${originMsg}${r.limitMsg}`]
+      msgList.push(combined)
+      if (!result.firstImagePath) {
+        result.firstImagePath = r.thumbnailUrl
+        result.firstImageIsThumbnail = true
+        result.firstImageThumbnailMsg = `\n${originMsg}${r.limitMsg}`
       }
       return
     }
     if (r.isOversized) {
       result.isImageSizeLimitTriggered = true
-      if (config.sendMode === 'forward') msgList.push(r.oversizedMsg)
-      else await e.reply(r.oversizedMsg)
+      msgList.push(`${originMsg}\n${r.oversizedMsg}`)
       return
     }
     // 正常
     result.successImageCount++
-    if (config.sendMode === 'forward') {
-      msgList.push(segment.image(r.filePath))
-      if (!result.firstImagePath) result.firstImagePath = r.filePath
-    } else {
-      await sendImageNormal(e, r.filePath, r.fileName, config)
-      await cleanupFile(r.filePath)
-    }
+    msgList.push({ type: 'lofter-image', filePath: r.filePath, fileName: r.fileName, originMsg })
+    if (!result.firstImagePath) result.firstImagePath = r.filePath
   }
 
   /** Step 10: 合并转发模式（R-02 对象参数） */
-  async stepSendForward({ e, msgList, post, config, imageResult }) {
+  async stepSendForward({ e, msgList, post, blogger, config, imageResult }) {
     const forwardTitle = config.forwardTitle || 'Lofter解析结果'
     const forwardNickname = config.forwardNickname || ''
     try {
-      const forwardMsg = await makeForwardMsg(e, msgList, forwardTitle, forwardNickname)
+      const forwardMsg = await makeForwardMsg(e, msgList.map(msg => this.toForwardMessage(msg)), forwardTitle, forwardNickname)
       if (forwardMsg) {
         await e.reply(forwardMsg)
       } else {
-        for (const msg of msgList) await e.reply(msg)
+        for (const msg of msgList) await e.reply(this.toReplyMessage(msg))
       }
       if (config.sendFirstImage) {
         await this.sendFirstImagePreview({ e, post, config, image: imageResult })
@@ -396,11 +382,11 @@ export class LofterPlugin extends plugin {
     } catch (err) {
       logger.error('[Lofter解析] 发送合并转发失败:', err)
       await e.reply('发送合并转发失败，尝试普通发送。')
-      for (const msg of msgList) await e.reply(msg)
+      for (const msg of msgList) await e.reply(this.toReplyMessage(msg))
     } finally {
       if (post.hasImages && post.photoLinks.length > 0) {
         const tempDir = getTempDir()
-        await cleanupTempFiles(tempDir, sanitizeFileName(post.blogName))
+        await cleanupTempFiles(tempDir, sanitizeFileName(blogger.blogName))
       }
     }
   }
@@ -429,5 +415,62 @@ export class LofterPlugin extends plugin {
       const sizeLimitMB = config.imageSizeLimit ?? 8
       await e.reply(`解析成功${post.photoLinks.length}张图片，均超过设定的大小上限（${sizeLimitMB}MB），请点击合并转发查看具体链接。`)
     }
+  }
+
+  toForwardMessage(msg) {
+    if (msg?.type === 'lofter-image') {
+      return [segment.image(msg.filePath), `\n${msg.originMsg}`]
+    }
+    return msg
+  }
+
+  toReplyMessage(msg) {
+    if (msg?.type === 'lofter-image') {
+      return [segment.image(msg.filePath), `\n${msg.originMsg}`]
+    }
+    return msg
+  }
+
+  async sendNormalMessage(e, msg, config) {
+    if (msg?.type === 'lofter-image' && config.sendOriginal) {
+      await sendImageNormal(e, msg.filePath, msg.fileName, config)
+      await e.reply(msg.originMsg)
+      await cleanupFile(msg.filePath)
+      return
+    }
+    await e.reply(this.toReplyMessage(msg))
+    if (msg?.type === 'lofter-image') await cleanupFile(msg.filePath)
+  }
+
+  async cleanupImages(post, blogger) {
+    if (post.hasImages && post.photoLinks.length > 0) {
+      const tempDir = getTempDir()
+      await cleanupTempFiles(tempDir, sanitizeFileName(blogger.blogName))
+    }
+  }
+
+  buildStatsMessage({ stats, counts, startedAt }) {
+    return buildParseStatsMessage({
+      ...stats,
+      elapsedSeconds: ((Date.now() - startedAt) / 1000).toFixed(3),
+      todayCount: counts.today,
+      groupCount: counts.group
+    })
+  }
+
+  recordSuccessfulParse(e) {
+    const today = formatDate(Date.now())
+    if (parseCounter.date !== today) {
+      parseCounter.date = today
+      parseCounter.today = 0
+      parseCounter.groups.clear()
+    }
+    parseCounter.today++
+
+    const groupKey = e.isGroup ? String(e.group_id || e.group?.group_id || e.group?.id || 'unknown') : 'private'
+    const groupCount = (parseCounter.groups.get(groupKey) || 0) + 1
+    parseCounter.groups.set(groupKey, groupCount)
+
+    return { today: parseCounter.today, group: groupCount }
   }
 }

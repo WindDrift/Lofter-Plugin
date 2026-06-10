@@ -43,7 +43,7 @@ imageTextLimit: 1000
 # 智能首行空两格（如果博文没缩进，自动在开头加两个全角空格）
 smartIndent: true
 
-# 是否发送纯文解析统计消息（字数、自然段、预计图片数）
+# 保留旧配置项；解析统计现在固定在结果末尾发送
 enablePureTextStatPrompt: true
 
 # 纯文图片模式下是否在每一页页脚显示统计信息
