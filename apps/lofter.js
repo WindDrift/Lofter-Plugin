@@ -12,7 +12,7 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import Config from '../components/Config.js'
 import { fetchPage, cleanupTempFiles, cleanupFile } from '../lib/fetcher.js'
-import { parsePageData, extractPostInfo } from '../lib/parser.js'
+import { parsePageData, extractPostInfo, extractImageUrl } from '../lib/parser.js'
 import { countTextUnits, processText } from '../lib/textProcessor.js'
 import { processImage, getTempDir } from '../lib/imageHandler.js'
 import { resolveFontConfig, renderTextAsImages, splitParagraphsByLimit } from '../lib/imageRenderer.js'
@@ -122,6 +122,7 @@ export class LofterPlugin extends plugin {
       logger.error('[Lofter解析] 配置加载结果异常，放弃本次解析')
       return false
     }
+    config = this.normalizeConfig(config)
     if (!config.autoParse) {
       logger.debug?.('[Lofter解析] autoParse=false，跳过')
       return false
@@ -144,7 +145,7 @@ export class LofterPlugin extends plugin {
       const postWithTime = {
         ...post,
         publishDateTimeStr: formatDateTime(post.publishTime),
-        inlineTags: config.tagLinks ? [] : post.tagList
+        inlineTags: config.sendTagLinks ? [] : post.tagList
       }
 
       // Step 3: 发送准备提示
@@ -166,7 +167,7 @@ export class LofterPlugin extends plugin {
       const imageResult = await this.stepHandleImages({ post, blogger, config, msgList, existingFirstImagePath: imageMode.firstImagePath })
 
       // Step 9: 大小限制提示
-      if (imageResult.isImageSizeLimitTriggered) {
+      if (config.sendImageLimitTip && imageResult.isImageSizeLimitTriggered) {
         const tipMsg = '要调整/关闭图片大小限制功能，请前往锅巴面板配置。'
         msgList.push(tipMsg)
       }
@@ -180,12 +181,12 @@ export class LofterPlugin extends plugin {
       // Step 10: 发送结果
       if (config.sendMode === 'forward') {
         const counts = this.recordSuccessfulParse(e)
-        msgList.push(this.buildStatsMessage({ stats, counts, startedAt }))
+        if (config.sendParseStats) msgList.push(this.buildStatsMessage({ stats, counts, startedAt }))
         await this.stepSendForward({ e, msgList, post, blogger, config, imageResult })
       } else {
         for (const msg of msgList) await this.sendNormalMessage(e, msg, config)
         const counts = this.recordSuccessfulParse(e)
-        await e.reply(this.buildStatsMessage({ stats, counts, startedAt }))
+        if (config.sendParseStats) await e.reply(this.buildStatsMessage({ stats, counts, startedAt }))
         await this.cleanupImages(post, blogger)
       }
     } catch (err) {
@@ -206,6 +207,22 @@ export class LofterPlugin extends plugin {
   }
 
   // ============== Pipeline Steps ==============
+
+  normalizeConfig(config) {
+    return {
+      ...config,
+      sendBloggerInfo: config.sendBloggerInfo ?? true,
+      sendPostInfo: config.sendPostInfo ?? true,
+      sendTagLinks: config.sendTagLinks ?? config.tagLinks ?? true,
+      sendInteraction: config.sendInteraction ?? true,
+      sendPostTitle: config.sendPostTitle ?? true,
+      sendPostBody: config.sendPostBody ?? true,
+      sendImages: config.sendImages ?? true,
+      sendImageLinks: config.sendImageLinks ?? true,
+      sendImageLimitTip: config.sendImageLimitTip ?? true,
+      sendParseStats: config.sendParseStats ?? true
+    }
+  }
 
   /** Step 2: 抓取并解析 */
   async stepFetchAndParse({ url, timeout }) {
@@ -244,13 +261,15 @@ export class LofterPlugin extends plugin {
   /** Step 5: 组装文本消息（R-02 已改造） */
   buildTextMessages({ blogger, post, interaction, paragraphs, config }) {
     const messages = []
-    messages.push(buildBloggerMessage(blogger))
-    messages.push(buildPostInfoMessage(post))
-    if (config.tagLinks && post.tagList && post.tagList.length > 0) {
+    if (config.sendBloggerInfo) messages.push(buildBloggerMessage(blogger))
+    if (config.sendPostInfo) messages.push(buildPostInfoMessage(post))
+    if (config.sendTagLinks && post.tagList && post.tagList.length > 0) {
       messages.push(buildTagLinksMessage(post.tagList))
     }
-    messages.push(buildInteractionMessage(interaction))
-    messages.push(post.title)
+    if (config.sendInteraction) messages.push(buildInteractionMessage(interaction))
+    if (config.sendPostTitle) messages.push(post.title)
+
+    if (!config.sendPostBody) return messages
 
     const pureTextSendMode = config.pureTextSendMode || 'single'
     const hasImages = post.hasImages
@@ -267,7 +286,7 @@ export class LofterPlugin extends plugin {
 
   /** Step 6: 纯文图片模式渲染 */
   async stepRenderImageMode({ post, blogger, config, textCtx, textMessages }) {
-    if (post.hasImages || (config.pureTextSendMode || 'single') !== 'image') {
+    if (!config.sendPostBody || post.hasImages || (config.pureTextSendMode || 'single') !== 'image') {
       return { firstImagePath: null, isImageMode: false }
     }
     let firstImagePath = null
@@ -313,6 +332,11 @@ export class LofterPlugin extends plugin {
     }
     if (!post.hasImages) return result
 
+    if (!config.sendImages) {
+      if (config.sendImageLinks) this.appendImageLinkMessages(post, msgList)
+      return result
+    }
+
     const tempDir = getTempDir()
     const total = post.photoLinks.length
 
@@ -331,7 +355,7 @@ export class LofterPlugin extends plugin {
         msgList.push(`图片 ${name} ${failMsg}。`)
         continue
       }
-      this.dispatchImageResult({ r, i, msgList, result })
+      this.dispatchImageResult({ r, i, config, msgList, result })
     }
     return result
   }
@@ -340,29 +364,37 @@ export class LofterPlugin extends plugin {
    * 内部：根据图片处理结果分支发送到 msgList 或 e.reply
    * @param {object} args
    */
-  dispatchImageResult({ r, i, msgList, result }) {
+  dispatchImageResult({ r, i, config, msgList, result }) {
     const originMsg = buildImageOriginMessage(i, r.imgUrl)
     if (r.isThumbnail) {
       result.isImageSizeLimitTriggered = true
       result.successImageCount++
-      const combined = [segment.image(r.thumbnailUrl), `\n${originMsg}${r.limitMsg}`]
+      const suffix = config.sendImageLinks ? `\n${originMsg}${r.limitMsg}` : r.limitMsg
+      const combined = [segment.image(r.thumbnailUrl), suffix]
       msgList.push(combined)
       if (!result.firstImagePath) {
         result.firstImagePath = r.thumbnailUrl
         result.firstImageIsThumbnail = true
-        result.firstImageThumbnailMsg = `\n${originMsg}${r.limitMsg}`
+        result.firstImageThumbnailMsg = suffix
       }
       return
     }
     if (r.isOversized) {
       result.isImageSizeLimitTriggered = true
-      msgList.push(`${originMsg}\n${r.oversizedMsg}`)
+      msgList.push(config.sendImageLinks ? `${originMsg}\n${r.oversizedMsg}` : r.oversizedMsg)
       return
     }
     // 正常
     result.successImageCount++
-    msgList.push({ type: 'lofter-image', filePath: r.filePath, fileName: r.fileName, originMsg })
+    msgList.push({ type: 'lofter-image', filePath: r.filePath, fileName: r.fileName, originMsg: config.sendImageLinks ? originMsg : '' })
     if (!result.firstImagePath) result.firstImagePath = r.filePath
+  }
+
+  appendImageLinkMessages(post, msgList) {
+    post.photoLinks.forEach((link, index) => {
+      const imgUrl = extractImageUrl(link)
+      if (imgUrl) msgList.push(buildImageOriginMessage(index, imgUrl))
+    })
   }
 
   /** Step 10: 合并转发模式（R-02 对象参数） */
@@ -419,14 +451,14 @@ export class LofterPlugin extends plugin {
 
   toForwardMessage(msg) {
     if (msg?.type === 'lofter-image') {
-      return [segment.image(msg.filePath), `\n${msg.originMsg}`]
+      return msg.originMsg ? [segment.image(msg.filePath), `\n${msg.originMsg}`] : segment.image(msg.filePath)
     }
     return msg
   }
 
   toReplyMessage(msg) {
     if (msg?.type === 'lofter-image') {
-      return [segment.image(msg.filePath), `\n${msg.originMsg}`]
+      return msg.originMsg ? [segment.image(msg.filePath), `\n${msg.originMsg}`] : segment.image(msg.filePath)
     }
     return msg
   }
@@ -434,7 +466,7 @@ export class LofterPlugin extends plugin {
   async sendNormalMessage(e, msg, config) {
     if (msg?.type === 'lofter-image' && config.sendOriginal) {
       await sendImageNormal(e, msg.filePath, msg.fileName, config)
-      await e.reply(msg.originMsg)
+      if (msg.originMsg) await e.reply(msg.originMsg)
       await cleanupFile(msg.filePath)
       return
     }

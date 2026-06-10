@@ -99,11 +99,20 @@ Lofter-Plugin/
 | `pureTextSendMode` | `single` | 纯文发送模式：`single` 单消息 / `multi` 多消息 / `image` 长图渲染 |
 | `timeout` | `30` | 网络请求超时时间（秒） |
 
-### 发送设置
+### 发送内容管理
 
 | 配置项 | 默认值 | 说明 |
 |--------|--------|------|
-| `tagLinks` | `true` | 是否显示独立标签链接消息；关闭时在博文基础信息中显示普通标签 |
+| `sendBloggerInfo` | `true` | 是否发送博主信息 |
+| `sendPostInfo` | `true` | 是否发送博文基础信息；标签链接关闭时普通标签也显示在这里 |
+| `sendTagLinks` | `true` | 是否单独发送带链接的标签消息；关闭时在博文基础信息中显示普通标签 |
+| `sendInteraction` | `true` | 是否发送互动数据 |
+| `sendPostTitle` | `true` | 是否发送正文标题；纯文图片模式中长图仍保留标题 |
+| `sendPostBody` | `true` | 是否发送正文文本或纯文长图 |
+| `sendImages` | `true` | 是否发送图片本体 |
+| `sendImageLinks` | `true` | 是否发送每张图片对应的原图链接，和图片本体相互独立 |
+| `sendImageLimitTip` | `true` | 图片触发大小限制时，是否发送全局调整提示 |
+| `sendParseStats` | `true` | 是否发送字数、自然段、图片数、耗时、今日和本群解析次数 |
 | `sendOriginal` | `false` | 是否以文件形式发送原图（会增加流量消耗） |
 | `sendFirstImage` | `false` | 合并转发时是否单独发送首图预览 |
 | `imageCountPrompt` | `true` | 首图后是否附加剩余图片数量提示 |
@@ -137,7 +146,8 @@ Lofter-Plugin/
 ## 注意事项
 
 - 下载的图片暂存在 Yunzai 根目录的 `temp/lofter` 文件夹中，发送完成后会自动清理
-- 解析结果顺序为：博主信息、博文基础信息、标签链接或普通标签、互动数据、正文标题、正文、图片、图片大小限制提示、统计
+- 解析结果顺序为：博主信息、博文基础信息、标签链接或普通标签、互动数据、正文标题、正文、图片、图片大小限制提示、统计；这些内容可在“发送内容管理”中分别开关
+- 旧配置项 `tagLinks` 会被兼容读取；新配置请使用 `sendTagLinks`
 - 受网络波动和 Lofter 平台策略影响，部分博文的数据或图片可能获取失败，插件会进行容错处理
 - 图片模式依赖云崽内置的 Puppeteer 支持，请确保已正确安装 Chromium
 
