@@ -210,6 +210,42 @@ export const LOFTER_FIELDS = [
     key: 'forwardNickname', type: 'input', default: '',
     label: '转发昵称', bottomLabel: '合并转发内部的发信人昵称（留空则默认使用 Bot 名称）',
     group: '合并转发设置', order: 20
+  },
+
+  // ============== 列表浏览设置 ==============
+  {
+    key: 'blogListPageSize', type: 'number', default: 10, min: 1, max: 20,
+    label: '博主主页列表数量', bottomLabel: '博主主页列表每次显示的帖子数量',
+    group: '列表浏览设置', order: 10
+  },
+  {
+    key: 'tagListPageSize', type: 'number', default: 20, min: 1, max: 50,
+    label: '标签页列表数量', bottomLabel: '标签页列表每次显示的帖子数量',
+    group: '列表浏览设置', order: 20
+  },
+  {
+    key: 'listCacheTTL', type: 'number', default: 600, min: 60, max: 3600,
+    label: '列表缓存有效期', bottomLabel: '列表缓存有效期，单位：秒，用于 #lofter解析 序号',
+    group: '列表浏览设置', order: 30
+  },
+  {
+    key: 'sendBlogInfo', type: 'switch', default: true,
+    label: '发送博主信息', bottomLabel: '是否发送博主主页的博主信息',
+    group: '列表浏览设置', order: 40
+  },
+  {
+    key: 'sendTagInfo', type: 'switch', default: true,
+    label: '发送标签信息', bottomLabel: '是否发送标签页的标签信息',
+    group: '列表浏览设置', order: 50
+  },
+  {
+    key: 'tagDefaultSort', type: 'select', default: 'new',
+    label: '标签默认排序', bottomLabel: '标签页默认排序方式',
+    options: [
+      { label: '最新', value: 'new' },
+      { label: '热门', value: 'hot' }
+    ],
+    group: '列表浏览设置', order: 60
   }
 ]
 

@@ -16,6 +16,9 @@ import { fileURLToPath } from 'url'
 import Config from '../components/Config.js'
 import { fetchPage, cleanupTempFiles, cleanupFile } from '../lib/fetcher.js'
 import { parsePageData, extractPostInfo, extractImageUrl } from '../lib/parser.js'
+import { extractBlogPageInfo } from '../lib/blogParser.js'
+import { extractTagPageInfo } from '../lib/tagParser.js'
+import { getListCacheKey, setListCache, getListCache } from '../lib/listCache.js'
 import { countTextUnits, processText } from '../lib/textProcessor.js'
 import { processImage, getTempDir } from '../lib/imageHandler.js'
 import { resolveFontConfig, renderTextAsImages, splitParagraphsByLimit } from '../lib/imageRenderer.js'
@@ -26,11 +29,13 @@ import {
   buildInteractionMessage,
   buildImageOriginMessage,
   buildParseStatsMessage,
+  buildBlogListMessages,
+  buildTagListMessages,
   makeForwardMsg,
   sendImageNormal,
   recallMessage
 } from '../lib/messageBuilder.js'
-import { formatDate, formatDateTime, runWithConcurrency, sanitizeFileName } from '../lib/utils.js'
+import { formatDate, formatDateTime, runWithConcurrency, sanitizeFileName, sleep } from '../lib/utils.js'
 
 /** @typedef {import('../lib/utils.js').LofterConfig} LofterConfig */
 /** @typedef {import('../lib/utils.js').PostExtracted} PostExtracted */
@@ -92,6 +97,12 @@ function categorizeError(err) {
   return { category: 'unknown', hint: 'Lofter 解析时发生未知错误。' }
 }
 
+/** Lofter 博主主页链接正则表达式 */
+const LOFTER_BLOG_URL_REGEX = /https?:\/\/[a-zA-Z0-9-]+\.lofter\.com\/?$/i
+
+/** 与 LOFTER_BLOG_URL_REGEX 等价的字符串模式（供 Yunzai rule.reg 使用） */
+const LOFTER_BLOG_URL_PATTERN = 'https?:\\/\\/[a-zA-Z0-9-]+\\.lofter\\.com\\/?$'
+
 export class LofterPlugin extends plugin {
   constructor() {
     super({
@@ -103,6 +114,30 @@ export class LofterPlugin extends plugin {
         {
           reg: LOFTER_URL_PATTERN,
           fnc: 'parseLofter'
+        },
+        {
+          reg: '^#lofter\\s+(.+)$',
+          fnc: 'browseBlog'
+        },
+        {
+          reg: '^#lofter下一页$',
+          fnc: 'browseBlogNextPage'
+        },
+        {
+          reg: '^#lofter标签\\s+(.+)$',
+          fnc: 'browseTag'
+        },
+        {
+          reg: '^#lofter标签下一页$',
+          fnc: 'browseTagNextPage'
+        },
+        {
+          reg: '^#lofter标签热门$',
+          fnc: 'browseTagHot'
+        },
+        {
+          reg: '^#lofter解析\\s*(\\d+)$',
+          fnc: 'parseCachedListItem'
         }
       ]
     })
@@ -234,7 +269,13 @@ export class LofterPlugin extends plugin {
       sendImages: config.sendImages ?? true,
       sendImageLinks: config.sendImageLinks ?? true,
       sendImageLimitTip: config.sendImageLimitTip ?? true,
-      sendParseStats: config.sendParseStats ?? true
+      sendParseStats: config.sendParseStats ?? true,
+      blogListPageSize: config.blogListPageSize ?? 10,
+      tagListPageSize: config.tagListPageSize ?? 20,
+      listCacheTTL: config.listCacheTTL ?? 600,
+      sendBlogInfo: config.sendBlogInfo ?? true,
+      sendTagInfo: config.sendTagInfo ?? true,
+      tagDefaultSort: config.tagDefaultSort ?? 'new'
     }
   }
 
@@ -577,6 +618,510 @@ export class LofterPlugin extends plugin {
       await e.reply(message)
     } catch (err) {
       logger.error('[Lofter解析] 发送开发者模式提示失败', err)
+    }
+  }
+
+  // ============== 博主主页浏览 ==============
+
+  /**
+   * 加载配置（复用 parseLofter 的防御性加载逻辑）
+   * @returns {LofterConfig|null}
+   */
+  loadConfig() {
+    let config
+    try {
+      const ConfigClass = Config
+      if (typeof ConfigClass.getInstance === 'function') {
+        config = ConfigClass.getInstance().getDefSet('lofter')
+      } else {
+        config = new ConfigClass().getDefSet('lofter')
+      }
+    } catch (cfgErr) {
+      logger.error('[Lofter解析] 配置加载失败，使用空配置继续', cfgErr)
+      config = {}
+    }
+    if (!config || typeof config !== 'object') {
+      logger.error('[Lofter解析] 配置加载结果异常')
+      return null
+    }
+    return this.normalizeConfig(config)
+  }
+
+  /**
+   * 从消息中提取博主名或主页 URL
+   * @param {string} msg - 消息文本
+   * @returns {string|null} blogName
+   */
+  extractBlogName(msg) {
+    const match = msg.match(/^#lofter\s+(.+)$/)
+    if (!match) return null
+    const input = match[1].trim()
+
+    // 检查是否为 Lofter 主页 URL
+    const urlMatch = input.match(/^https?:\/\/([a-zA-Z0-9-]+)\.lofter\.com\/?$/i)
+    if (urlMatch) return urlMatch[1]
+
+    // 否则视为博主名
+    return input
+  }
+
+  /**
+   * 浏览博主主页
+   * @param {object} e - 消息事件对象
+   * @returns {Promise<boolean>}
+   */
+  async browseBlog(e) {
+    const config = this.loadConfig()
+    if (!config) return false
+
+    const blogName = this.extractBlogName(e.msg)
+    if (!blogName) return false
+
+    logger.info(`[Lofter解析] 浏览博主主页: ${blogName}`)
+    const url = `https://${blogName}.lofter.com/`
+
+    try {
+      const html = await fetchPage(url, config.timeout || 30)
+      const dataObj = parsePageData(html)
+      const blogPage = extractBlogPageInfo(dataObj, url)
+
+      // 截取指定数量的帖子
+      const pageSize = config.blogListPageSize || 10
+      const items = blogPage.postList.slice(0, pageSize)
+
+      // 构建消息
+      const messages = buildBlogListMessages({ ...blogPage, postList: items }, config)
+
+      // 缓存列表
+      setListCache(e, {
+        type: 'blog',
+        items: items,
+        pageState: {
+          blogName: blogPage.blogger.blogName,
+          offset: blogPage.offset
+        }
+      }, config.listCacheTTL || 600)
+
+      // 发送消息
+      if (config.sendMode === 'forward') {
+        const forwardMsg = await makeForwardMsg(e, messages, config.forwardTitle || 'Lofter解析结果', config.forwardNickname || '')
+        if (forwardMsg) {
+          await e.reply(forwardMsg)
+        } else {
+          for (const msg of messages) await e.reply(msg)
+        }
+      } else {
+        for (const msg of messages) await e.reply(msg)
+      }
+
+      return true
+    } catch (err) {
+      const { category, hint } = categorizeError(err)
+      logger.error(`[Lofter解析] [${category}] 博主主页浏览失败: ${err.message}`)
+      await e.reply(hint)
+      return false
+    }
+  }
+
+  /**
+   * 博主主页下一页
+   * @param {object} e - 消息事件对象
+   * @returns {Promise<boolean>}
+   */
+  async browseBlogNextPage(e) {
+    const config = this.loadConfig()
+    if (!config) return false
+
+    const cache = getListCache(e)
+    if (!cache || cache.type !== 'blog') {
+      await e.reply('请先使用 #lofter 博主名 浏览博主主页')
+      return false
+    }
+
+    const { blogName, offset } = cache.pageState
+    if (!offset || offset <= 0) {
+      await e.reply('已经没有更多内容了')
+      return false
+    }
+
+    logger.info(`[Lofter解析] 博主主页下一页: ${blogName}, offset=${offset}`)
+    const url = `https://${blogName}.lofter.com/?offset=${offset}`
+
+    try {
+      const html = await fetchPage(url, config.timeout || 30)
+      const dataObj = parsePageData(html)
+      const blogPage = extractBlogPageInfo(dataObj, url)
+
+      // 截取指定数量的帖子
+      const pageSize = config.blogListPageSize || 10
+      const items = blogPage.postList.slice(0, pageSize)
+
+      // 构建消息
+      const messages = buildBlogListMessages({ ...blogPage, postList: items }, config)
+
+      // 更新缓存
+      setListCache(e, {
+        type: 'blog',
+        items: items,
+        pageState: {
+          blogName: blogPage.blogger.blogName,
+          offset: blogPage.offset
+        }
+      }, config.listCacheTTL || 600)
+
+      // 发送消息
+      if (config.sendMode === 'forward') {
+        const forwardMsg = await makeForwardMsg(e, messages, config.forwardTitle || 'Lofter解析结果', config.forwardNickname || '')
+        if (forwardMsg) {
+          await e.reply(forwardMsg)
+        } else {
+          for (const msg of messages) await e.reply(msg)
+        }
+      } else {
+        for (const msg of messages) await e.reply(msg)
+      }
+
+      return true
+    } catch (err) {
+      const { category, hint } = categorizeError(err)
+      logger.error(`[Lofter解析] [${category}] 博主主页下一页失败: ${err.message}`)
+      await e.reply(hint)
+      return false
+    }
+  }
+
+  // ============== 标签页浏览 ==============
+
+  /**
+   * 从消息中提取标签名
+   * @param {string} msg - 消息文本
+   * @returns {string|null} 标签名
+   */
+  extractTagName(msg) {
+    const match = msg.match(/^#lofter标签\s+(.+)$/)
+    return match ? match[1].trim() : null
+  }
+
+  /**
+   * 浏览标签页
+   * @param {object} e - 消息事件对象
+   * @returns {Promise<boolean>}
+   */
+  async browseTag(e) {
+    const config = this.loadConfig()
+    if (!config) return false
+
+    const tagName = this.extractTagName(e.msg)
+    if (!tagName) return false
+
+    const sort = config.tagDefaultSort || 'new'
+    logger.info(`[Lofter解析] 浏览标签页: ${tagName}, 排序: ${sort}`)
+
+    try {
+      const encodedTag = encodeURIComponent(tagName)
+      const url = `https://www.lofter.com/tag/${encodedTag}/${sort}?page=1`
+      const html = await fetchPage(url, config.timeout || 30)
+      const dataObj = parsePageData(html)
+      const tagPage = extractTagPageInfo(dataObj, url, sort)
+
+      // 截取指定数量的帖子
+      const pageSize = config.tagListPageSize || 20
+      const items = tagPage.items.slice(0, pageSize)
+
+      // 构建消息
+      const messages = buildTagListMessages({ ...tagPage, items }, config)
+
+      // 缓存列表
+      setListCache(e, {
+        type: 'tag',
+        items: items,
+        pageState: {
+          tag: tagName,
+          page: 1,
+          sort: sort
+        }
+      }, config.listCacheTTL || 600)
+
+      // 发送消息
+      if (config.sendMode === 'forward') {
+        const forwardMsg = await makeForwardMsg(e, messages, config.forwardTitle || 'Lofter解析结果', config.forwardNickname || '')
+        if (forwardMsg) {
+          await e.reply(forwardMsg)
+        } else {
+          for (const msg of messages) await e.reply(msg)
+        }
+      } else {
+        for (const msg of messages) await e.reply(msg)
+      }
+
+      return true
+    } catch (err) {
+      const { category, hint } = categorizeError(err)
+      logger.error(`[Lofter解析] [${category}] 标签页浏览失败: ${err.message}`)
+      await e.reply(hint)
+      return false
+    }
+  }
+
+  /**
+   * 标签页下一页
+   * @param {object} e - 消息事件对象
+   * @returns {Promise<boolean>}
+   */
+  async browseTagNextPage(e) {
+    const config = this.loadConfig()
+    if (!config) return false
+
+    const cache = getListCache(e)
+    if (!cache || cache.type !== 'tag') {
+      await e.reply('请先使用 #lofter标签 标签名 浏览标签页')
+      return false
+    }
+
+    const { tag, page, sort } = cache.pageState
+    const nextPage = page + 1
+
+    logger.info(`[Lofter解析] 标签页下一页: ${tag}, page=${nextPage}, sort=${sort}`)
+
+    try {
+      const encodedTag = encodeURIComponent(tag)
+      const url = `https://www.lofter.com/tag/${encodedTag}/${sort}?page=${nextPage}`
+      const html = await fetchPage(url, config.timeout || 30)
+      const dataObj = parsePageData(html)
+      const tagPage = extractTagPageInfo(dataObj, url, sort)
+
+      // 截取指定数量的帖子
+      const pageSize = config.tagListPageSize || 20
+      const items = tagPage.items.slice(0, pageSize)
+
+      // 构建消息
+      const messages = buildTagListMessages({ ...tagPage, items }, config)
+
+      // 更新缓存
+      setListCache(e, {
+        type: 'tag',
+        items: items,
+        pageState: {
+          tag: tag,
+          page: nextPage,
+          sort: sort
+        }
+      }, config.listCacheTTL || 600)
+
+      // 发送消息
+      if (config.sendMode === 'forward') {
+        const forwardMsg = await makeForwardMsg(e, messages, config.forwardTitle || 'Lofter解析结果', config.forwardNickname || '')
+        if (forwardMsg) {
+          await e.reply(forwardMsg)
+        } else {
+          for (const msg of messages) await e.reply(msg)
+        }
+      } else {
+        for (const msg of messages) await e.reply(msg)
+      }
+
+      return true
+    } catch (err) {
+      const { category, hint } = categorizeError(err)
+      logger.error(`[Lofter解析] [${category}] 标签页下一页失败: ${err.message}`)
+      await e.reply(hint)
+      return false
+    }
+  }
+
+  /**
+   * 标签页切换热门排序
+   * @param {object} e - 消息事件对象
+   * @returns {Promise<boolean>}
+   */
+  async browseTagHot(e) {
+    const config = this.loadConfig()
+    if (!config) return false
+
+    const cache = getListCache(e)
+    if (!cache || cache.type !== 'tag') {
+      await e.reply('请先使用 #lofter标签 标签名 浏览标签页')
+      return false
+    }
+
+    const { tag } = cache.pageState
+    const sort = 'hot'
+
+    logger.info(`[Lofter解析] 标签页切换热门: ${tag}`)
+
+    try {
+      const encodedTag = encodeURIComponent(tag)
+      const url = `https://www.lofter.com/tag/${encodedTag}/${sort}?page=1`
+      const html = await fetchPage(url, config.timeout || 30)
+      const dataObj = parsePageData(html)
+      const tagPage = extractTagPageInfo(dataObj, url, sort)
+
+      // 截取指定数量的帖子
+      const pageSize = config.tagListPageSize || 20
+      const items = tagPage.items.slice(0, pageSize)
+
+      // 构建消息
+      const messages = buildTagListMessages({ ...tagPage, items }, config)
+
+      // 更新缓存
+      setListCache(e, {
+        type: 'tag',
+        items: items,
+        pageState: {
+          tag: tag,
+          page: 1,
+          sort: sort
+        }
+      }, config.listCacheTTL || 600)
+
+      // 发送消息
+      if (config.sendMode === 'forward') {
+        const forwardMsg = await makeForwardMsg(e, messages, config.forwardTitle || 'Lofter解析结果', config.forwardNickname || '')
+        if (forwardMsg) {
+          await e.reply(forwardMsg)
+        } else {
+          for (const msg of messages) await e.reply(msg)
+        }
+      } else {
+        for (const msg of messages) await e.reply(msg)
+      }
+
+      return true
+    } catch (err) {
+      const { category, hint } = categorizeError(err)
+      logger.error(`[Lofter解析] [${category}] 标签页热门切换失败: ${err.message}`)
+      await e.reply(hint)
+      return false
+    }
+  }
+
+  // ============== 列表快速解析 ==============
+
+  /**
+   * 从缓存列表中解析指定序号的帖子
+   * @param {object} e - 消息事件对象
+   * @returns {Promise<boolean>}
+   */
+  async parseCachedListItem(e) {
+    const config = this.loadConfig()
+    if (!config) return false
+
+    const cache = getListCache(e)
+    if (!cache || !cache.items || cache.items.length === 0) {
+      await e.reply('当前没有可解析的列表，请先使用 #lofter 博主名 或 #lofter标签 标签名 浏览列表')
+      return false
+    }
+
+    // 提取序号
+    const match = e.msg.match(/^#lofter解析\s*(\d+)$/)
+    if (!match) return false
+
+    const index = parseInt(match[1], 10)
+    if (index < 1 || index > cache.items.length) {
+      await e.reply(`序号超出范围，请输入 1 到 ${cache.items.length} 之间的数字`)
+      return false
+    }
+
+    const item = cache.items[index - 1]
+    const blogName = item.blogInfo?.blogName
+    const permalink = item.permalink
+
+    if (!blogName || !permalink) {
+      await e.reply('该帖子信息不完整，无法解析')
+      return false
+    }
+
+    const url = `https://${blogName}.lofter.com/post/${permalink}`
+    logger.info(`[Lofter解析] 快速解析: ${url}`)
+
+    try {
+      // 复用 parseLofterUrl 的逻辑
+      return await this.parseLofterUrl(e, url, config)
+    } catch (err) {
+      const { category, hint } = categorizeError(err)
+      logger.error(`[Lofter解析] [${category}] 快速解析失败: ${err.message}`)
+      await e.reply(hint)
+      return false
+    }
+  }
+
+  /**
+   * 解析指定 URL 的 Lofter 帖子（复用 parseLofter 的核心逻辑）
+   * @param {object} e - 消息事件对象
+   * @param {string} url - 帖子 URL
+   * @param {LofterConfig} config - 配置对象
+   * @returns {Promise<boolean>}
+   */
+  async parseLofterUrl(e, url, config) {
+    const startedAt = Date.now()
+    let prepMsg = null
+
+    try {
+      // Step 2: 抓取并解析
+      const postInfo = await this.stepFetchAndParse({ url, timeout: config.timeout || 30 })
+      const { blogger, post, interaction } = postInfo
+      const postWithTime = {
+        ...post,
+        publishDateTimeStr: formatDateTime(post.publishTime),
+        inlineTags: config.sendTagLinks ? [] : post.tagList
+      }
+
+      // Step 3: 发送准备提示
+      prepMsg = await this.stepSendPrepare(e, { post, url })
+
+      // Step 4: 文本处理 + 统计
+      const textCtx = this.stepProcessText({ post, config })
+
+      // Step 5: 组装文本消息
+      const textMessages = this.buildTextMessages({ blogger, post: postWithTime, interaction, paragraphs: textCtx.paragraphs, config })
+
+      // Step 6: 纯文图片模式渲染
+      const imageMode = await this.stepRenderImageMode({
+        post, blogger, config, textCtx, textMessages
+      })
+
+      // Step 8: 图片下载与发送
+      const msgList = [...textMessages]
+      const imageResult = await this.stepHandleImages({ post, blogger, config, msgList, existingFirstImagePath: imageMode.firstImagePath })
+
+      // Step 9: 大小限制提示
+      if (config.sendImageLimitTip && imageResult.isImageSizeLimitTriggered) {
+        const tipMsg = '要调整/关闭图片大小限制功能，请前往锅巴面板配置。'
+        msgList.push(tipMsg)
+      }
+
+      const stats = {
+        textCount: textCtx.totalTextCount,
+        paragraphCount: textCtx.paragraphCount,
+        imageCount: post.photoLinks.length
+      }
+
+      // Step 10: 发送结果
+      if (config.sendMode === 'forward') {
+        const counts = this.recordSuccessfulParse(e)
+        if (config.sendParseStats) msgList.push(this.buildStatsMessage({ stats, counts, startedAt }))
+        await this.stepSendForward({ e, msgList, post, blogger, config, imageResult })
+        await this.sendDeveloperModeMessage(e)
+      } else {
+        for (const msg of msgList) await this.sendNormalMessage(e, msg, config)
+        const counts = this.recordSuccessfulParse(e)
+        if (config.sendParseStats) await e.reply(this.buildStatsMessage({ stats, counts, startedAt }))
+        await this.cleanupImages(post, blogger)
+        await this.sendDeveloperModeMessage(e)
+      }
+
+      return true
+    } catch (err) {
+      const { category, hint } = categorizeError(err)
+      logger.error(`[Lofter解析] [${category}] ${err.message}`)
+      try {
+        await e.reply(hint)
+      } catch (replyErr) {
+        logger.error('[Lofter解析] 回复错误提示失败', replyErr)
+      }
+      return false
+    } finally {
+      await recallMessage(e, prepMsg)
     }
   }
 }
