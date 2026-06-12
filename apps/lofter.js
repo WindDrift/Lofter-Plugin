@@ -232,7 +232,7 @@ export class LofterPlugin extends plugin {
         await this.stepSendForward({ e, msgList, post, blogger, config, imageResult })
         await this.sendDeveloperModeMessage(e)
       } else {
-        for (const msg of msgList) await this.sendNormalMessage(e, msg, config)
+        for (const msg of msgList) await this.sendNormalMessage(e, msg, config, blogger)
         const counts = this.recordSuccessfulParse(e)
         if (config.sendParseStats) await e.reply(this.buildStatsMessage({ stats, counts, startedAt }))
         await this.cleanupImages(post, blogger)
@@ -396,7 +396,7 @@ export class LofterPlugin extends plugin {
     const total = post.photoLinks.length
 
     // 预创建上下文
-    const ctxFor = (i) => ({ blogger, post, config, tempDir })
+    const ctxFor = (i) => ({ blogger, post, config, tempDir, imageProtected: blogger.imageProtected })
 
     // 并发下载（P-01：默认 3 并发）
     const tasks = post.photoLinks.map((link, i) => async () => processImage(link, i, total, ctxFor(i)))
@@ -412,6 +412,15 @@ export class LofterPlugin extends plugin {
       }
       this.dispatchImageResult({ r, i, config, msgList, result })
     }
+
+    // 作品保护时在图片消息前插入版权提示
+    if (blogger.imageProtected && result.successImageCount > 0) {
+      const firstImageIdx = msgList.findIndex(msg => msg?.type === 'lofter-image' || (Array.isArray(msg) && msg.some(m => m?.type === 'image')))
+      if (firstImageIdx >= 0) {
+        msgList.splice(firstImageIdx, 0, '该博主已开启作品保护，将不下载原图，请点击链接获取原图，请保留版权意识。')
+      }
+    }
+
     return result
   }
 
@@ -464,7 +473,7 @@ export class LofterPlugin extends plugin {
         for (const msg of msgList) await e.reply(this.toReplyMessage(msg))
       }
       if (config.sendFirstImage) {
-        await this.sendFirstImagePreview({ e, post, config, image: imageResult })
+        await this.sendFirstImagePreview({ e, post, config, image: imageResult, blogger })
       }
     } catch (err) {
       logger.error('[Lofter解析] 发送合并转发失败:', err)
@@ -479,7 +488,13 @@ export class LofterPlugin extends plugin {
   }
 
   /** Step 10.b: 首图预览（R-02 对象参数） */
-  async sendFirstImagePreview({ e, post, config, image }) {
+  async sendFirstImagePreview({ e, post, config, image, blogger }) {
+    // 作品保护时跳过首图发送
+    if (blogger?.imageProtected) {
+      await e.reply('该博主已开启作品保护，请点击合并转发查看')
+      return
+    }
+
     const showPrompt = config.imageCountPrompt ?? true
     const { firstImagePath, firstImageIsThumbnail, firstImageThumbnailMsg, successImageCount } = image
 
@@ -518,15 +533,20 @@ export class LofterPlugin extends plugin {
     return msg
   }
 
-  async sendNormalMessage(e, msg, config) {
-    if (msg?.type === 'lofter-image' && config.sendOriginal) {
-      await sendImageNormal(e, msg.filePath, msg.fileName, config)
-      if (msg.originMsg) await e.reply(msg.originMsg)
+  async sendNormalMessage(e, msg, config, blogger) {
+    if (msg?.type === 'lofter-image') {
+      // 作品保护时禁用 sendOriginal，改发图片消息
+      if (config.sendOriginal && !blogger?.imageProtected) {
+        await sendImageNormal(e, msg.filePath, msg.fileName, config)
+        if (msg.originMsg) await e.reply(msg.originMsg)
+        await cleanupFile(msg.filePath)
+        return
+      }
+      await e.reply(this.toReplyMessage(msg))
       await cleanupFile(msg.filePath)
-      return
+    } else {
+      await e.reply(this.toReplyMessage(msg))
     }
-    await e.reply(this.toReplyMessage(msg))
-    if (msg?.type === 'lofter-image') await cleanupFile(msg.filePath)
   }
 
   async cleanupImages(post, blogger) {
@@ -1103,7 +1123,7 @@ export class LofterPlugin extends plugin {
         await this.stepSendForward({ e, msgList, post, blogger, config, imageResult })
         await this.sendDeveloperModeMessage(e)
       } else {
-        for (const msg of msgList) await this.sendNormalMessage(e, msg, config)
+        for (const msg of msgList) await this.sendNormalMessage(e, msg, config, blogger)
         const counts = this.recordSuccessfulParse(e)
         if (config.sendParseStats) await e.reply(this.buildStatsMessage({ stats, counts, startedAt }))
         await this.cleanupImages(post, blogger)
