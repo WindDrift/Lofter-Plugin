@@ -100,3 +100,22 @@ imageSizeLimit: 8
 
 # 配合图片大小限制功能，超出阈值的图片将获取并发送缩略图
 sendThumbnail: true
+
+# === 列表浏览设置 ===
+# 博主主页列表每次显示的帖子数量
+blogListPageSize: 10
+
+# 标签页列表每次显示的帖子数量
+tagListPageSize: 20
+
+# 列表缓存有效期，单位：秒，用于 #lofter解析 序号
+listCacheTTL: 600
+
+# 是否发送博主主页的博主信息
+sendBlogInfo: true
+
+# 是否发送标签页的标签信息
+sendTagInfo: true
+
+# 标签页默认排序：new 或 hot
+tagDefaultSort: new
