@@ -18,6 +18,12 @@
 - 支持发送博主信息、博文信息、标签链接、互动数据、正文、图片、原图链接和解析统计。
 - 支持锅巴面板可视化配置。
 - 支持主人命令在线更新插件。
+- **博主主页浏览**：`#lofter 博主名` 查看博主信息和最新博文列表，`#lofter下一页` 翻页浏览。
+- **标签页浏览**：`#lofter标签 标签名` 查看标签下最新帖子，`#lofter标签下一页` 翻页，`#lofter标签热门` 切换热门排序。
+- **列表快速解析**：浏览博主或标签列表后，`#lofter解析 序号` 直接解析指定帖子，无需手动复制链接。
+- **错误分类提示**：网络异常、页面结构变更、Puppeteer 渲染失败等场景给出针对性提示，而非笼统报错。
+- **配置热重载**：修改 `lofter.yaml` 后无需重启，后续解析自动使用新配置。
+- **开发者模式**：`dev` 分支下自动展示与 `main` 分支的差异提交记录。
 
 ## 运行环境
 
@@ -217,7 +223,9 @@ plugins/Lofter-Plugin/config/config/lofter.yaml
 Lofter-Plugin/
 ├── index.js                         # 插件入口，加载 apps 下的插件类
 ├── apps/
-│   ├── lofter.js                    # Lofter 链接解析主流程
+│   ├── lofter.js                    # 博文链接解析 + 快速解析
+│   ├── blogBrowser.js               # 博主主页浏览 + 翻页
+│   ├── tagBrowser.js                # 标签页浏览 + 翻页 + 热门
 │   └── update.js                    # 插件更新命令
 ├── components/
 │   └── Config.js                    # YAML 配置读取、合并、缓存和热重载
@@ -226,13 +234,27 @@ Lofter-Plugin/
 │   └── default_config/lofter.yaml   # 默认配置文件
 ├── guoba/                           # 锅巴面板接入
 ├── lib/
-│   ├── fetcher.js                   # 页面抓取、图片下载、临时文件清理
-│   ├── parser.js                    # Lofter 页面数据解析
-│   ├── textProcessor.js             # HTML 清洗、段落拆分、字数统计、智能缩进
-│   ├── imageHandler.js              # 图片文件名、下载重试、大小限制、缩略图处理
-│   ├── imageRenderer.js             # 纯文长图渲染
-│   ├── messageBuilder.js            # 消息内容和合并转发构造
-│   └── utils.js                     # 通用工具和常量
+│   ├── core/                        # 基础设施
+│   │   ├── types.js                 # 集中类型定义
+│   │   ├── errors.js                # 错误分类 + 自定义错误类
+│   │   ├── configLoader.js          # 统一配置加载 + normalizeConfig
+│   │   └── utils.js                 # 通用工具和常量
+│   ├── fetch/                       # 网络请求与缓存
+│   │   ├── cache.js                 # 通用 TtlCache 类
+│   │   ├── fetcher.js               # 页面抓取、图片下载、临时文件清理
+│   │   └── listCache.js             # 列表缓存（按群/私聊维度）
+│   ├── parse/                       # 数据解析
+│   │   ├── parser.js                # 博文数据解析
+│   │   ├── blogParser.js            # 博主主页解析
+│   │   └── tagParser.js             # 标签页解析
+│   ├── render/                      # 渲染处理
+│   │   ├── textProcessor.js         # HTML 清洗、段落拆分、智能缩进
+│   │   ├── imageHandler.js          # 图片下载重试、大小限制、缩略图
+│   │   └── imageRenderer.js         # 纯文长图渲染
+│   └── message/                     # 消息构建与发送
+│       ├── messageBuilder.js        # 消息文本格式化
+│       ├── sender.js                # 合并转发、图片发送、撤回
+│       └── pipeline.js              # 博文解析流水线（Step 2-10）
 ├── resources/
 │   ├── fonts/                       # 纯文图片模式字体目录
 │   └── html/lofter/text-post.html   # 纯文长图模板
@@ -277,6 +299,14 @@ plugins/Lofter-Plugin/config/config/lofter.yaml
 - 解析计数只保存在当前进程内，Bot 重启后会重置。
 - `sendOriginal` 仅在逐条发送图片时用于尝试发送文件；合并转发中仍按图片消息组织。
 - 插件更新命令需要主人权限。
+
+## 免责声明
+
+- 本插件仅供学习交流使用，请勿用于任何商业或非法用途。
+- 插件解析的内容（包括但不限于博文文本、图片、博主信息）版权归原博主及 Lofter 平台所有，使用者应遵守 Lofter 用户协议及相关法律法规。
+- 插件通过抓取 Lofter 页面公开数据实现功能，不涉及账号登录、数据篡改或越权访问。若 Lofter 平台调整页面结构或接口策略导致插件失效，作者不承担任何责任。
+- 使用本插件下载的图片仅供个人查看，请勿未经授权转载、二次分发或用于其他侵权行为。
+- 因使用本插件产生的任何直接或间接损失，作者不承担任何责任。
 
 ## 许可证
 
