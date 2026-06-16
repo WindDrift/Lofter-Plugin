@@ -4,9 +4,9 @@
  */
 
 import plugin from '../../../lib/plugins/plugin.js'
-import { fetchPage } from '../lib/fetch/fetcher.js'
+import { fetchPage, fetchTagPageByDWR } from '../lib/fetch/fetcher.js'
 import { parsePageData } from '../lib/parse/parser.js'
-import { extractTagPageInfo } from '../lib/parse/tagParser.js'
+import { extractTagPageInfo, parseDWRResponse } from '../lib/parse/tagParser.js'
 import { setListCache, getListCache } from '../lib/fetch/listCache.js'
 import { buildTagListMessages } from '../lib/message/messageBuilder.js'
 import { sendListResult } from '../lib/message/sender.js'
@@ -90,24 +90,28 @@ export class TagBrowser extends plugin {
     logger.info(`[Lofter解析] 浏览标签页: ${tagName}, 排序: ${sort}`)
 
     try {
-      const encodedTag = encodeURIComponent(tagName)
-      const url = `https://www.lofter.com/tag/${encodedTag}/${sort}?page=1`
-      const html = await fetchPage(url, config.timeout || 30, config)
-      const dataObj = parsePageData(html)
-      const tagPage = extractTagPageInfo(dataObj, url, sort)
+      const dwrText = await fetchTagPageByDWR(encodeURIComponent(tagName), sort, 20, 0, null, config)
+      const { items } = parseDWRResponse(dwrText, tagName, sort)
+
+      const tag = {
+        name: tagName,
+        postCount: 0
+      }
 
       const pageSize = config.tagListPageSize || 20
-      const items = tagPage.items.slice(0, pageSize)
+      const pageItems = items.slice(0, pageSize)
 
-      const messages = buildTagListMessages({ ...tagPage, items }, config)
+      const messages = buildTagListMessages({ tag, items: pageItems, page: 1, sort }, config)
 
       setListCache(e, {
         type: 'tag',
-        items: items,
+        items: pageItems,
         pageState: {
           tag: tagName,
           page: 1,
-          sort: sort
+          sort: sort,
+          gotNum: pageItems.length,
+          lastTimestamp: Date.now()
         }
       }, config.listCacheTTL || 600)
 
@@ -155,24 +159,28 @@ export class TagBrowser extends plugin {
     logger.info(`[Lofter解析] 浏览标签${rankName}: ${tagName}`)
 
     try {
-      const encodedTag = encodeURIComponent(tagName)
-      const url = `https://www.lofter.com/tag/${encodedTag}/${sort}?page=1`
-      const html = await fetchPage(url, config.timeout || 30, config)
-      const dataObj = parsePageData(html)
-      const tagPage = extractTagPageInfo(dataObj, url, sort)
+      const dwrText = await fetchTagPageByDWR(encodeURIComponent(tagName), sort, 20, 0, null, config)
+      const { items } = parseDWRResponse(dwrText, tagName, sort)
+
+      const tag = {
+        name: tagName,
+        postCount: 0
+      }
 
       const pageSize = config.tagListPageSize || 20
-      const items = tagPage.items.slice(0, pageSize)
+      const pageItems = items.slice(0, pageSize)
 
-      const messages = buildTagListMessages({ ...tagPage, items }, config)
+      const messages = buildTagListMessages({ tag, items: pageItems, page: 1, sort }, config)
 
       setListCache(e, {
         type: 'tag',
-        items: items,
+        items: pageItems,
         pageState: {
           tag: tagName,
           page: 1,
-          sort: sort
+          sort: sort,
+          gotNum: pageItems.length,
+          lastTimestamp: Date.now()
         }
       }, config.listCacheTTL || 600)
 
@@ -202,30 +210,34 @@ export class TagBrowser extends plugin {
       return false
     }
 
-    const { tag, page, sort } = cache.pageState
+    const { tag, page, sort, gotNum = 0, lastTimestamp } = cache.pageState
     const nextPage = page + 1
 
     logger.info(`[Lofter解析] 标签页下一页: ${tag}, page=${nextPage}, sort=${sort}`)
 
     try {
-      const encodedTag = encodeURIComponent(tag)
-      const url = `https://www.lofter.com/tag/${encodedTag}/${sort}?page=${nextPage}`
-      const html = await fetchPage(url, config.timeout || 30, config)
-      const dataObj = parsePageData(html)
-      const tagPage = extractTagPageInfo(dataObj, url, sort)
+      const dwrText = await fetchTagPageByDWR(encodeURIComponent(tag), sort, 20, gotNum, lastTimestamp, config)
+      const { items, lastTimestamp: newLastTimestamp } = parseDWRResponse(dwrText, tag, sort)
+
+      const tagInfo = {
+        name: tag,
+        postCount: 0
+      }
 
       const pageSize = config.tagListPageSize || 20
-      const items = tagPage.items.slice(0, pageSize)
+      const pageItems = items.slice(0, pageSize)
 
-      const messages = buildTagListMessages({ ...tagPage, items }, config)
+      const messages = buildTagListMessages({ tag: tagInfo, items: pageItems, page: nextPage, sort }, config)
 
       setListCache(e, {
         type: 'tag',
-        items: items,
+        items: pageItems,
         pageState: {
           tag: tag,
           page: nextPage,
-          sort: sort
+          sort: sort,
+          gotNum: gotNum + pageItems.length,
+          lastTimestamp: newLastTimestamp || lastTimestamp
         }
       }, config.listCacheTTL || 600)
 
@@ -261,24 +273,28 @@ export class TagBrowser extends plugin {
     logger.info(`[Lofter解析] 标签页切换热门: ${tag}`)
 
     try {
-      const encodedTag = encodeURIComponent(tag)
-      const url = `https://www.lofter.com/tag/${encodedTag}/${sort}?page=1`
-      const html = await fetchPage(url, config.timeout || 30, config)
-      const dataObj = parsePageData(html)
-      const tagPage = extractTagPageInfo(dataObj, url, sort)
+      const dwrText = await fetchTagPageByDWR(encodeURIComponent(tag), sort, 20, 0, null, config)
+      const { items } = parseDWRResponse(dwrText, tag, sort)
+
+      const tagInfo = {
+        name: tag,
+        postCount: 0
+      }
 
       const pageSize = config.tagListPageSize || 20
-      const items = tagPage.items.slice(0, pageSize)
+      const pageItems = items.slice(0, pageSize)
 
-      const messages = buildTagListMessages({ ...tagPage, items }, config)
+      const messages = buildTagListMessages({ tag: tagInfo, items: pageItems, page: 1, sort }, config)
 
       setListCache(e, {
         type: 'tag',
-        items: items,
+        items: pageItems,
         pageState: {
           tag: tag,
           page: 1,
-          sort: sort
+          sort: sort,
+          gotNum: pageItems.length,
+          lastTimestamp: Date.now()
         }
       }, config.listCacheTTL || 600)
 
