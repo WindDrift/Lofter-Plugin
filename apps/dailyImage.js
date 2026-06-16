@@ -10,6 +10,23 @@ import { startScheduler, stopScheduler } from '../lib/dailyImage/scheduler.js'
 
 const VALID_SORTS = ['new', 'hot', 'month', 'week', 'date', 'total']
 
+/**
+ * 检查发送者是否有管理权限（群主、管理员或 Bot 主人）
+ * @param {object} e - 消息事件对象
+ * @returns {boolean}
+ */
+function hasManagePermission(e) {
+  // Bot 主人
+  if (e.isMaster) return true
+  // 群聊权限检查
+  if (e.isGroup && e.sender) {
+    const role = e.sender.role
+    // owner=群主, admin=管理员
+    return role === 'owner' || role === 'admin'
+  }
+  return false
+}
+
 export class DailyImage extends plugin {
   constructor() {
     super({
@@ -61,6 +78,11 @@ export class DailyImage extends plugin {
       return false
     }
 
+    if (!hasManagePermission(e)) {
+      await e.reply('仅群主、管理员或 Bot 主人可操作订阅')
+      return false
+    }
+
     const config = loadConfig()
     if (!config?.dailyImageEnabled) {
       await e.reply('每日一图功能未启用')
@@ -96,6 +118,11 @@ export class DailyImage extends plugin {
   async unsubscribe(e) {
     if (!e.isGroup) {
       await e.reply('每日一图功能仅限群聊使用')
+      return false
+    }
+
+    if (!hasManagePermission(e)) {
+      await e.reply('仅群主、管理员或 Bot 主人可操作订阅')
       return false
     }
 
