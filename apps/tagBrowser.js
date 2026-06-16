@@ -4,9 +4,9 @@
  */
 
 import plugin from '../../../lib/plugins/plugin.js'
-import { fetchPage, fetchTagPageByDWR } from '../lib/fetch/fetcher.js'
+import { fetchTagPageByAPI } from '../lib/fetch/fetcher.js'
 import { parsePageData } from '../lib/parse/parser.js'
-import { extractTagPageInfo, parseDWRResponse } from '../lib/parse/tagParser.js'
+import { extractTagPageInfo, parseAPIResponse } from '../lib/parse/tagParser.js'
 import { setListCache, getListCache } from '../lib/fetch/listCache.js'
 import { buildTagListMessages } from '../lib/message/messageBuilder.js'
 import { sendListResult } from '../lib/message/sender.js'
@@ -90,8 +90,8 @@ export class TagBrowser extends plugin {
     logger.info(`[Lofter解析] 浏览标签页: ${tagName}, 排序: ${sort}`)
 
     try {
-      const dwrText = await fetchTagPageByDWR(tagName, sort, 20, 0, null, config)
-      const { items } = parseDWRResponse(dwrText, tagName, sort)
+      const apiData = await fetchTagPageByAPI(tagName, sort, 0, config)
+      const { items, offset } = parseAPIResponse(apiData, tagName, sort)
 
       const tag = {
         name: tagName,
@@ -110,8 +110,7 @@ export class TagBrowser extends plugin {
           tag: tagName,
           page: 1,
           sort: sort,
-          gotNum: pageItems.length,
-          lastTimestamp: Date.now()
+          offset: offset
         }
       }, config.listCacheTTL || 600)
 
@@ -159,8 +158,8 @@ export class TagBrowser extends plugin {
     logger.info(`[Lofter解析] 浏览标签${rankName}: ${tagName}`)
 
     try {
-      const dwrText = await fetchTagPageByDWR(tagName, sort, 20, 0, null, config)
-      const { items } = parseDWRResponse(dwrText, tagName, sort)
+      const apiData = await fetchTagPageByAPI(tagName, sort, 0, config)
+      const { items, offset } = parseAPIResponse(apiData, tagName, sort)
 
       const tag = {
         name: tagName,
@@ -179,8 +178,7 @@ export class TagBrowser extends plugin {
           tag: tagName,
           page: 1,
           sort: sort,
-          gotNum: pageItems.length,
-          lastTimestamp: Date.now()
+          offset: offset
         }
       }, config.listCacheTTL || 600)
 
@@ -210,14 +208,14 @@ export class TagBrowser extends plugin {
       return false
     }
 
-    const { tag, page, sort, gotNum = 0, lastTimestamp } = cache.pageState
+    const { tag, page, sort, offset = 0 } = cache.pageState
     const nextPage = page + 1
 
     logger.info(`[Lofter解析] 标签页下一页: ${tag}, page=${nextPage}, sort=${sort}`)
 
     try {
-      const dwrText = await fetchTagPageByDWR(tag, sort, 20, gotNum, lastTimestamp, config)
-      const { items, lastTimestamp: newLastTimestamp } = parseDWRResponse(dwrText, tag, sort)
+      const apiData = await fetchTagPageByAPI(tag, sort, offset, config)
+      const { items, offset: newOffset } = parseAPIResponse(apiData, tag, sort)
 
       const tagInfo = {
         name: tag,
@@ -236,8 +234,7 @@ export class TagBrowser extends plugin {
           tag: tag,
           page: nextPage,
           sort: sort,
-          gotNum: gotNum + pageItems.length,
-          lastTimestamp: newLastTimestamp || lastTimestamp
+          offset: newOffset
         }
       }, config.listCacheTTL || 600)
 
@@ -273,8 +270,8 @@ export class TagBrowser extends plugin {
     logger.info(`[Lofter解析] 标签页切换热门: ${tag}`)
 
     try {
-      const dwrText = await fetchTagPageByDWR(tag, sort, 20, 0, null, config)
-      const { items } = parseDWRResponse(dwrText, tag, sort)
+      const apiData = await fetchTagPageByAPI(tag, sort, 0, config)
+      const { items, offset } = parseAPIResponse(apiData, tag, sort)
 
       const tagInfo = {
         name: tag,
@@ -293,8 +290,7 @@ export class TagBrowser extends plugin {
           tag: tag,
           page: 1,
           sort: sort,
-          gotNum: pageItems.length,
-          lastTimestamp: Date.now()
+          offset: offset
         }
       }, config.listCacheTTL || 600)
 
