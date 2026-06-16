@@ -90,7 +90,7 @@ export class TagBrowser extends plugin {
     logger.info(`[Lofter解析] 浏览标签页: ${tagName}, 排序: ${sort}`)
 
     try {
-      const dwrText = await fetchTagPageByDWR(encodeURIComponent(tagName), sort, 20, 0, null, config)
+      const dwrText = await fetchTagPageByDWR(tagName, sort, 20, 0, null, config)
       const { items } = parseDWRResponse(dwrText, tagName, sort)
 
       const tag = {
@@ -159,7 +159,7 @@ export class TagBrowser extends plugin {
     logger.info(`[Lofter解析] 浏览标签${rankName}: ${tagName}`)
 
     try {
-      const dwrText = await fetchTagPageByDWR(encodeURIComponent(tagName), sort, 20, 0, null, config)
+      const dwrText = await fetchTagPageByDWR(tagName, sort, 20, 0, null, config)
       const { items } = parseDWRResponse(dwrText, tagName, sort)
 
       const tag = {
@@ -216,7 +216,7 @@ export class TagBrowser extends plugin {
     logger.info(`[Lofter解析] 标签页下一页: ${tag}, page=${nextPage}, sort=${sort}`)
 
     try {
-      const dwrText = await fetchTagPageByDWR(encodeURIComponent(tag), sort, 20, gotNum, lastTimestamp, config)
+      const dwrText = await fetchTagPageByDWR(tag, sort, 20, gotNum, lastTimestamp, config)
       const { items, lastTimestamp: newLastTimestamp } = parseDWRResponse(dwrText, tag, sort)
 
       const tagInfo = {
@@ -273,7 +273,7 @@ export class TagBrowser extends plugin {
     logger.info(`[Lofter解析] 标签页切换热门: ${tag}`)
 
     try {
-      const dwrText = await fetchTagPageByDWR(encodeURIComponent(tag), sort, 20, 0, null, config)
+      const dwrText = await fetchTagPageByDWR(tag, sort, 20, 0, null, config)
       const { items } = parseDWRResponse(dwrText, tag, sort)
 
       const tagInfo = {
