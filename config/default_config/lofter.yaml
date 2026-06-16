@@ -127,3 +127,11 @@ sendTagInfo: true
 
 # 标签页默认排序：new 或 hot
 tagDefaultSort: new
+
+# === 每日一图设置 ===
+# 是否启用每日一图功能
+dailyImageEnabled: false
+# 每日推送时间，格式 HH:mm
+dailyImagePushTime: '08:00'
+# 全局最大订阅数量
+dailyImageMaxSubscriptions: 50

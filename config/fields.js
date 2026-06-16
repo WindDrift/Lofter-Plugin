@@ -261,6 +261,23 @@ export const LOFTER_FIELDS = [
       { label: '热门', value: 'hot' }
     ],
     group: '列表浏览设置', order: 60
+  },
+
+  // ============== 每日一图设置 ==============
+  {
+    key: 'dailyImageEnabled', type: 'switch', default: false,
+    label: '每日一图功能', bottomLabel: '开启后可在群聊中订阅标签，每天定时推送随机博文',
+    group: '每日一图设置', order: 10
+  },
+  {
+    key: 'dailyImagePushTime', type: 'input', default: '08:00',
+    label: '每日推送时间', bottomLabel: '每日推送时间，格式 HH:mm（如 08:00）',
+    group: '每日一图设置', order: 20
+  },
+  {
+    key: 'dailyImageMaxSubscriptions', type: 'number', default: 50, min: 1, max: 500,
+    label: '最大订阅数量', bottomLabel: '全局最大订阅数量限制',
+    group: '每日一图设置', order: 30
   }
 ]
 
