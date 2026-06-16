@@ -32,6 +32,22 @@ export class TagBrowser extends plugin {
         {
           reg: '^#lofter标签热门$',
           fnc: 'browseTagHot'
+        },
+        {
+          reg: '^#lofter标签月榜\\s+(.+)$',
+          fnc: 'browseTagMonth'
+        },
+        {
+          reg: '^#lofter标签周榜\\s+(.+)$',
+          fnc: 'browseTagWeek'
+        },
+        {
+          reg: '^#lofter标签日榜\\s+(.+)$',
+          fnc: 'browseTagDate'
+        },
+        {
+          reg: '^#lofter标签总榜\\s+(.+)$',
+          fnc: 'browseTagTotal'
         }
       ]
     })
@@ -44,6 +60,17 @@ export class TagBrowser extends plugin {
    */
   extractTagName(msg) {
     const match = msg.match(/^#lofter标签\s+(.+)$/)
+    return match ? match[1].trim() : null
+  }
+
+  /**
+   * 从榜单消息中提取标签名
+   * @param {string} msg - 消息文本
+   * @param {string} rankName - 榜单名称
+   * @returns {string|null} 标签名
+   */
+  extractRankTagName(msg, rankName) {
+    const match = msg.match(new RegExp(`^#lofter标签${rankName}\\s+(.+)$`))
     return match ? match[1].trim() : null
   }
 
@@ -65,7 +92,7 @@ export class TagBrowser extends plugin {
     try {
       const encodedTag = encodeURIComponent(tagName)
       const url = `https://www.lofter.com/tag/${encodedTag}/${sort}?page=1`
-      const html = await fetchPage(url, config.timeout || 30)
+      const html = await fetchPage(url, config.timeout || 30, config)
       const dataObj = parsePageData(html)
       const tagPage = extractTagPageInfo(dataObj, url, sort)
 
@@ -95,6 +122,71 @@ export class TagBrowser extends plugin {
     }
   }
 
+  async browseTagMonth(e) {
+    return this.browseTagRank(e, '月榜', 'month')
+  }
+
+  async browseTagWeek(e) {
+    return this.browseTagRank(e, '周榜', 'week')
+  }
+
+  async browseTagDate(e) {
+    return this.browseTagRank(e, '日榜', 'date')
+  }
+
+  async browseTagTotal(e) {
+    return this.browseTagRank(e, '总榜', 'total')
+  }
+
+  /**
+   * 浏览标签榜单页
+   * @param {object} e - 消息事件对象
+   * @param {string} rankName - 榜单名称
+   * @param {string} sort - 排序路径
+   * @returns {Promise<boolean>}
+   */
+  async browseTagRank(e, rankName, sort) {
+    const config = loadConfig()
+    if (!config) return false
+
+    const tagName = this.extractRankTagName(e.msg, rankName)
+    if (!tagName) return false
+
+    logger.info(`[Lofter解析] 浏览标签${rankName}: ${tagName}`)
+
+    try {
+      const encodedTag = encodeURIComponent(tagName)
+      const url = `https://www.lofter.com/tag/${encodedTag}/${sort}?page=1`
+      const html = await fetchPage(url, config.timeout || 30, config)
+      const dataObj = parsePageData(html)
+      const tagPage = extractTagPageInfo(dataObj, url, sort)
+
+      const pageSize = config.tagListPageSize || 20
+      const items = tagPage.items.slice(0, pageSize)
+
+      const messages = buildTagListMessages({ ...tagPage, items }, config)
+
+      setListCache(e, {
+        type: 'tag',
+        items: items,
+        pageState: {
+          tag: tagName,
+          page: 1,
+          sort: sort
+        }
+      }, config.listCacheTTL || 600)
+
+      await sendListResult(e, messages, config)
+
+      return true
+    } catch (err) {
+      const { category, hint } = categorizeError(err)
+      logger.error(`[Lofter解析] [${category}] 标签${rankName}浏览失败: ${err.message}`)
+      await e.reply(hint)
+      return false
+    }
+  }
+
   /**
    * 标签页下一页
    * @param {object} e - 消息事件对象
@@ -118,7 +210,7 @@ export class TagBrowser extends plugin {
     try {
       const encodedTag = encodeURIComponent(tag)
       const url = `https://www.lofter.com/tag/${encodedTag}/${sort}?page=${nextPage}`
-      const html = await fetchPage(url, config.timeout || 30)
+      const html = await fetchPage(url, config.timeout || 30, config)
       const dataObj = parsePageData(html)
       const tagPage = extractTagPageInfo(dataObj, url, sort)
 
@@ -171,7 +263,7 @@ export class TagBrowser extends plugin {
     try {
       const encodedTag = encodeURIComponent(tag)
       const url = `https://www.lofter.com/tag/${encodedTag}/${sort}?page=1`
-      const html = await fetchPage(url, config.timeout || 30)
+      const html = await fetchPage(url, config.timeout || 30, config)
       const dataObj = parsePageData(html)
       const tagPage = extractTagPageInfo(dataObj, url, sort)
 

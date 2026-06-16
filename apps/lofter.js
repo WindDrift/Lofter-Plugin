@@ -91,6 +91,9 @@ export class LofterPlugin extends plugin {
       return false
     }
     logger.info(`[Lofter解析] 检测到链接: ${url}`)
+    if (config.lofterLoginEnabled === true) {
+      logger.info('[Lofter解析] 已启用 Lofter 登录认证')
+    }
 
     return executeParsePipeline(e, {
       url,
@@ -128,12 +131,12 @@ export class LofterPlugin extends plugin {
     const blogName = item.blogInfo?.blogName
     const permalink = item.permalink
 
-    if (!blogName || !permalink) {
+    const url = permalink?.startsWith('http') ? permalink : (blogName && permalink ? `https://${blogName}.lofter.com/post/${permalink}` : '')
+    if (!url) {
       await e.reply('该帖子信息不完整，无法解析')
       return false
     }
 
-    const url = `https://${blogName}.lofter.com/post/${permalink}`
     logger.info(`[Lofter解析] 快速解析: ${url}`)
 
     return executeParsePipeline(e, {

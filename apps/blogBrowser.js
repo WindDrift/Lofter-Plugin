@@ -65,7 +65,7 @@ export class BlogBrowser extends plugin {
     const url = `https://${blogName}.lofter.com/`
 
     try {
-      const html = await fetchPage(url, config.timeout || 30)
+      const html = await fetchPage(url, config.timeout || 30, config)
       const dataObj = parsePageData(html)
       const blogPage = extractBlogPageInfo(dataObj, url)
 
@@ -119,7 +119,7 @@ export class BlogBrowser extends plugin {
     const url = `https://${blogName}.lofter.com/?offset=${offset}`
 
     try {
-      const html = await fetchPage(url, config.timeout || 30)
+      const html = await fetchPage(url, config.timeout || 30, config)
       const dataObj = parsePageData(html)
       const blogPage = extractBlogPageInfo(dataObj, url)
 

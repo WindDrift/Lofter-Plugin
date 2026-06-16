@@ -60,6 +60,21 @@ export const LOFTER_FIELDS = [
     label: '超时时间', bottomLabel: '解析请求的超时时间（秒）',
     group: '通用设置', order: 60
   },
+  {
+    key: 'lofterLoginEnabled', type: 'switch', default: false,
+    label: '启用Lofter登录', bottomLabel: '开启后使用下方 Cookie Key 与 Cookie 值访问登录后内容',
+    group: '通用设置', order: 70
+  },
+  {
+    key: 'lofterLoginKey', type: 'input', default: '',
+    label: 'Lofter登录Key', bottomLabel: '登录 Key 参考表：Authorization、LOFTER-PHONE-LOGIN-AUTH、LOFTER_SESS、NTES_SESS。获取方式：浏览器 F12 → Network → XHR → 点开请求 → Cookies → 复制对应 loginKey 的值',
+    group: '通用设置', order: 80
+  },
+  {
+    key: 'lofterLoginAuth', type: 'input', default: '',
+    label: 'Lofter登录Auth', bottomLabel: '填写 lofterLoginKey 对应的 Cookie 值。获取方式：浏览器 F12 → Network → XHR → 点开请求 → Cookies → 复制对应 loginKey 的值',
+    group: '通用设置', order: 90
+  },
 
   // ============== 发送内容管理 ==============
   {

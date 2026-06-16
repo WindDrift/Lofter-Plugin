@@ -55,6 +55,14 @@ forwardNickname: ''
 # 请求的超时时间（单位：秒）
 timeout: 30
 
+# === Lofter 登录配置 ===
+# 是否启用 Lofter 登录认证；开启后仅在 Key 和 Auth 均非空时注入 Cookie
+lofterLoginEnabled: false
+# Lofter 登录 Cookie Key，参考表：Authorization、LOFTER-PHONE-LOGIN-AUTH、LOFTER_SESS、NTES_SESS
+lofterLoginKey: ''
+# Lofter 登录 Cookie 值；获取方式：浏览器 F12 → Network → XHR → 点开请求 → Cookies → 复制对应 loginKey 的值
+lofterLoginAuth: ''
+
 # === 发送内容管理 ===
 # 是否发送博主信息
 sendBloggerInfo: true
