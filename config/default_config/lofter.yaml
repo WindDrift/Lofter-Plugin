@@ -135,3 +135,5 @@ dailyImageEnabled: false
 dailyImagePushTime: '08:00'
 # 全局最大订阅数量
 dailyImageMaxSubscriptions: 50
+# 同一群订阅多个标签时，每次推送之间的间隔时间（分钟）
+dailyImagePushInterval: 3

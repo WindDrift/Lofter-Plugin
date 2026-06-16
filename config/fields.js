@@ -278,6 +278,11 @@ export const LOFTER_FIELDS = [
     key: 'dailyImageMaxSubscriptions', type: 'number', default: 50, min: 1, max: 500,
     label: '最大订阅数量', bottomLabel: '全局最大订阅数量限制',
     group: '每日一图设置', order: 30
+  },
+  {
+    key: 'dailyImagePushInterval', type: 'number', default: 3, min: 1, max: 60,
+    label: '多标签推送间隔', bottomLabel: '同一群订阅多个标签时，每次推送之间的间隔时间（分钟）',
+    group: '每日一图设置', order: 40
   }
 ]
 

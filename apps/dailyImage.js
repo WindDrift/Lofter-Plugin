@@ -1,6 +1,11 @@
 /**
  * @module apps/dailyImage
- * @description 每日一图订阅与推送插件，处理 #lofter每日一图订阅、#lofter每日一图取消订阅、#lofter每日一图状态 命令
+ * @description 每日一图订阅与推送插件（支持每群多标签）
+ *
+ * 命令：
+ *  - #lofter每日一图订阅 标签名 [排序] — 添加标签订阅
+ *  - #lofter每日一图取消订阅 [标签名] — 取消订阅（不传标签名则取消全部）
+ *  - #lofter每日一图状态 — 查看当前订阅状态
  */
 
 import plugin from '../../../lib/plugins/plugin.js'
@@ -21,6 +26,10 @@ const SORT_DISPLAY_MAP = {
   'month': '月榜',
   'total': '总榜'
 }
+
+/**
+ * 中文排序名称映射
+ */
 const SORT_NAME_MAP = {
   '最新': 'new',
   '热门': 'hot',
@@ -60,7 +69,7 @@ export class DailyImage extends plugin {
           fnc: 'subscribe'
         },
         {
-          reg: '^#lofter每日一图取消订阅$',
+          reg: '^#lofter每日一图取消订阅(?:\\s+(\\S+))?$',
           fnc: 'unsubscribe'
         },
         {
@@ -88,7 +97,7 @@ export class DailyImage extends plugin {
   }
 
   /**
-   * 订阅每日一图
+   * 订阅每日一图（添加标签到群订阅）
    * @param {object} e - 消息事件对象
    * @returns {Promise<boolean>}
    */
@@ -131,12 +140,12 @@ export class DailyImage extends plugin {
       return false
     }
 
-    await e.reply(`已${result.isNew ? '订阅' : '更新订阅'}：标签 [${tagName}]，排序 [${SORT_DISPLAY_MAP[sort] || sort}]，推送时间 [${config.dailyImagePushTime || '08:00'}]`)
+    await e.reply(`已${result.isNew ? '订阅' : '更新'}标签 [${tagName}]，排序 [${SORT_DISPLAY_MAP[sort] || sort}]，推送时间 [${config.dailyImagePushTime || '08:00'}]`)
     return true
   }
 
   /**
-   * 取消订阅每日一图
+   * 取消订阅每日一图（支持取消指定标签或全部）
    * @param {object} e - 消息事件对象
    * @returns {Promise<boolean>}
    */
@@ -157,15 +166,22 @@ export class DailyImage extends plugin {
       return false
     }
 
+    const match = e.msg.match(/^#lofter每日一图取消订阅(?:\s+(\S+))?$/)
+    const tagName = match[1]
+
     const groupId = String(e.group_id || e.group?.group_id || e.group?.id || '')
-    const result = await removeSubscription(groupId)
+    const result = await removeSubscription(groupId, tagName)
 
     if (result.success === false) {
-      await e.reply('当前群未订阅每日一图')
+      if (result.reason === 'not_found') {
+        await e.reply('当前群未订阅每日一图')
+      } else if (result.reason === 'tag_not_found') {
+        await e.reply(`当前群未订阅标签 [${tagName}]`)
+      }
       return false
     }
 
-    await e.reply('已取消每日一图订阅')
+    await e.reply(tagName ? `已取消订阅标签 [${tagName}]` : '已取消全部每日一图订阅')
     return true
   }
 
@@ -189,12 +205,16 @@ export class DailyImage extends plugin {
     const groupId = String(e.group_id || e.group?.group_id || e.group?.id || '')
     const sub = await getSubscription(groupId)
 
-    if (!sub) {
+    if (!sub || !sub.tags || sub.tags.length === 0) {
       await e.reply('当前群未订阅每日一图')
       return true
     }
 
-    await e.reply(`每日一图订阅状态：\n标签：${sub.tagName}\n排序：${SORT_DISPLAY_MAP[sub.sort] || sub.sort}\n推送时间：${config.dailyImagePushTime || '08:00'}`)
+    const tagsList = sub.tags.map((t, i) => `${i + 1}. ${t.tagName} (${SORT_DISPLAY_MAP[t.sort] || t.sort})`).join('\n')
+    const pushInterval = config.dailyImagePushInterval || 3
+    const intervalNote = sub.tags.length > 1 ? `\n标签间隔：${pushInterval}分钟` : ''
+
+    await e.reply(`每日一图订阅状态：\n${tagsList}\n推送时间：${config.dailyImagePushTime || '08:00'}${intervalNote}`)
     return true
   }
 }
