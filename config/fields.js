@@ -60,6 +60,21 @@ export const LOFTER_FIELDS = [
     label: '超时时间', bottomLabel: '解析请求的超时时间（秒）',
     group: '通用设置', order: 60
   },
+  {
+    key: 'lofterLoginEnabled', type: 'switch', default: false,
+    label: '启用Lofter登录', bottomLabel: '开启后使用下方 Cookie Key 与 Cookie 值访问登录后内容',
+    group: '通用设置', order: 70
+  },
+  {
+    key: 'lofterLoginKey', type: 'input', default: '',
+    label: 'Lofter登录Key', bottomLabel: '登录 Key 参考表：Authorization、LOFTER-PHONE-LOGIN-AUTH、LOFTER_SESS、NTES_SESS。获取方式：浏览器 F12 → Network → XHR → 点开请求 → Cookies → 复制对应 loginKey 的值',
+    group: '通用设置', order: 80
+  },
+  {
+    key: 'lofterLoginAuth', type: 'input', default: '',
+    label: 'Lofter登录Auth', bottomLabel: '填写 lofterLoginKey 对应的 Cookie 值。获取方式：浏览器 F12 → Network → XHR → 点开请求 → Cookies → 复制对应 loginKey 的值',
+    group: '通用设置', order: 90
+  },
 
   // ============== 发送内容管理 ==============
   {
@@ -246,6 +261,28 @@ export const LOFTER_FIELDS = [
       { label: '热门', value: 'hot' }
     ],
     group: '列表浏览设置', order: 60
+  },
+
+  // ============== 每日一图设置 ==============
+  {
+    key: 'dailyImageEnabled', type: 'switch', default: false,
+    label: '每日一图功能', bottomLabel: '开启后可在群聊中订阅标签，每天定时推送随机博文',
+    group: '每日一图设置', order: 10
+  },
+  {
+    key: 'dailyImagePushTime', type: 'input', default: '08:00',
+    label: '每日推送时间', bottomLabel: '每日推送时间，格式 HH:mm（如 08:00）',
+    group: '每日一图设置', order: 20
+  },
+  {
+    key: 'dailyImageMaxSubscriptions', type: 'number', default: 50, min: 1, max: 500,
+    label: '最大订阅数量', bottomLabel: '全局最大订阅数量限制',
+    group: '每日一图设置', order: 30
+  },
+  {
+    key: 'dailyImagePushInterval', type: 'number', default: 3, min: 1, max: 60,
+    label: '多标签推送间隔', bottomLabel: '同一群订阅多个标签时，每次推送之间的间隔时间（分钟）',
+    group: '每日一图设置', order: 40
   }
 ]
 
