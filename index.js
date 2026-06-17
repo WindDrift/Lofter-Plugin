@@ -14,10 +14,10 @@
 import fs from 'node:fs'
 
 // 扫描 apps 目录下所有 .js 文件
-const files = fs.readdirSync('./plugins/Lofter-Plugin/apps').filter(file => file.endsWith('.js'))
+const files = fs.readdirSync('./plugins/Lofter-Plugin/apps').filter((file) => file.endsWith('.js'))
 
 // 异步导入所有模块
-let ret = files.map(file => import(`./apps/${file}`))
+let ret = files.map((file) => import(`./apps/${file}`))
 ret = await Promise.allSettled(ret)
 
 /**
@@ -36,7 +36,11 @@ function pickPluginClass(mod) {
   for (const c of candidates) {
     if (typeof c === 'function' && c.prototype) {
       const protoChain = getProtoChain(c.prototype)
-      if (protoChain.some(p => typeof p?.constructor?.name === 'string' && p.constructor.name.toLowerCase().includes('plugin'))) {
+      if (
+        protoChain.some(
+          (p) => typeof p?.constructor?.name === 'string' && p.constructor.name.toLowerCase().includes('plugin')
+        )
+      ) {
         return c
       }
     }
@@ -85,8 +89,8 @@ function getProtoChain(proto) {
 }
 
 // 提取成功加载的模块，记录失败信息
-let apps = {}
-for (let i in files) {
+const apps = {}
+for (const i in files) {
   const name = files[i].replace('.js', '')
 
   if (ret[i].status !== 'fulfilled') {

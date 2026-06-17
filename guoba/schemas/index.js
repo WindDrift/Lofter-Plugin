@@ -22,9 +22,7 @@ for (const item of lofter) {
 }
 
 /** 配置项的具体结构描述（表单组件模型） */
-export const schemas = [
-  ...lofter
-]
+export const schemas = [...lofter]
 
 /**
  * 获取当前配置数据

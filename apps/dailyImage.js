@@ -11,7 +11,7 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import { loadConfig } from '../lib/core/configLoader.js'
 import { addSubscription, removeSubscription, getSubscription } from '../lib/dailyImage/subscription.js'
-import { startScheduler, stopScheduler } from '../lib/dailyImage/scheduler.js'
+import { startScheduler } from '../lib/dailyImage/scheduler.js'
 
 const VALID_SORTS = ['new', 'hot', 'month', 'week', 'date', 'total']
 
@@ -19,24 +19,24 @@ const VALID_SORTS = ['new', 'hot', 'month', 'week', 'date', 'total']
  * 英文排序到中文显示名称的映射
  */
 const SORT_DISPLAY_MAP = {
-  'new': '最新',
-  'hot': '热门',
-  'date': '日榜',
-  'week': '周榜',
-  'month': '月榜',
-  'total': '总榜'
+  new: '最新',
+  hot: '热门',
+  date: '日榜',
+  week: '周榜',
+  month: '月榜',
+  total: '总榜'
 }
 
 /**
  * 中文排序名称映射
  */
 const SORT_NAME_MAP = {
-  '最新': 'new',
-  '热门': 'hot',
-  '日榜': 'date',
-  '周榜': 'week',
-  '月榜': 'month',
-  '总榜': 'total'
+  最新: 'new',
+  热门: 'hot',
+  日榜: 'date',
+  周榜: 'week',
+  月榜: 'month',
+  总榜: 'total'
 }
 
 /**
@@ -140,7 +140,9 @@ export class DailyImage extends plugin {
       return false
     }
 
-    await e.reply(`已${result.isNew ? '订阅' : '更新'}标签 [${tagName}]，排序 [${SORT_DISPLAY_MAP[sort] || sort}]，推送时间 [${config.dailyImagePushTime || '08:00'}]`)
+    await e.reply(
+      `已${result.isNew ? '订阅' : '更新'}标签 [${tagName}]，排序 [${SORT_DISPLAY_MAP[sort] || sort}]，推送时间 [${config.dailyImagePushTime || '08:00'}]`
+    )
     return true
   }
 
