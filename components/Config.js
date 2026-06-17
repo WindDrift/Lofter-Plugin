@@ -17,7 +17,6 @@
 import YAML from 'yaml'
 import fs from 'fs'
 import fsp from 'fs/promises'
-import path from 'path'
 import { buildDefaultLofterConfig } from '../config/fields.js'
 
 /** Yunzai-Bot 根目录 */

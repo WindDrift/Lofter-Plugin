@@ -12,7 +12,6 @@ import { dirname } from 'path'
 import { fileURLToPath } from 'url'
 import { getListCache } from '../lib/fetch/listCache.js'
 import { formatDate } from '../lib/core/utils.js'
-import { categorizeError } from '../lib/core/errors.js'
 import { loadConfig } from '../lib/core/configLoader.js'
 import { executeParsePipeline } from '../lib/message/pipeline.js'
 
@@ -131,7 +130,11 @@ export class LofterPlugin extends plugin {
     const blogName = item.blogInfo?.blogName
     const permalink = item.permalink
 
-    const url = permalink?.startsWith('http') ? permalink : (blogName && permalink ? `https://${blogName}.lofter.com/post/${permalink}` : '')
+    const url = permalink?.startsWith('http')
+      ? permalink
+      : blogName && permalink
+        ? `https://${blogName}.lofter.com/post/${permalink}`
+        : ''
     if (!url) {
       await e.reply('该帖子信息不完整，无法解析')
       return false
@@ -184,13 +187,17 @@ export class LofterPlugin extends plugin {
   getDeveloperCommitMessages() {
     try {
       const baseRef = this.resolveMainRef()
-      const output = execFileSync('git', ['log', '--format=%cd%x09%H%x09%s', '--date=format:%Y-%m-%d %H:%M:%S', `${baseRef}..dev`], {
-        cwd: pluginPath,
-        encoding: 'utf8',
-        stdio: ['ignore', 'pipe', 'ignore']
-      }).trim()
+      const output = execFileSync(
+        'git',
+        ['log', '--format=%cd%x09%H%x09%s', '--date=format:%Y-%m-%d %H:%M:%S', `${baseRef}..dev`],
+        {
+          cwd: pluginPath,
+          encoding: 'utf8',
+          stdio: ['ignore', 'pipe', 'ignore']
+        }
+      ).trim()
       if (!output) return []
-      return output.split('\n').map(line => {
+      return output.split('\n').map((line) => {
         const [time, hash, ...subjectParts] = line.split('\t')
         const shortHash = hash.slice(-7)
         return `${time} ${shortHash} ${subjectParts.join('\t')}`
@@ -218,9 +225,8 @@ export class LofterPlugin extends plugin {
     if (!this.isDeveloperMode()) return
     try {
       const commits = this.getDeveloperCommitMessages()
-      const message = commits.length > 0
-        ? `${DEVELOPER_MODE_MESSAGE}\n${commits.join('\n')}`
-        : DEVELOPER_MODE_SAME_MESSAGE
+      const message =
+        commits.length > 0 ? `${DEVELOPER_MODE_MESSAGE}\n${commits.join('\n')}` : DEVELOPER_MODE_SAME_MESSAGE
       await e.reply(message)
     } catch (err) {
       logger.error('[Lofter解析] 发送开发者模式提示失败', err)

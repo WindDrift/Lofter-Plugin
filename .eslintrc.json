@@ -12,6 +12,7 @@
     "logger": "readonly",
     "segment": "readonly",
     "plugin": "readonly",
+    "Bot": "readonly",
     "process": "readonly",
     "global": "readonly",
     "console": "readonly",
@@ -30,9 +31,5 @@
     "curly": ["warn", "multi-line"],
     "no-throw-literal": "warn"
   },
-  "ignorePatterns": [
-    "node_modules/",
-    "temp/",
-    "data/"
-  ]
+  "ignorePatterns": ["node_modules/", "temp/", "data/"]
 }

@@ -96,10 +96,7 @@ export class LofterUpdate extends plugin {
    */
   async fetchUpdateLog() {
     try {
-      const { stdout } = await execAsync(
-        'git log ORIG_HEAD..HEAD --pretty=format:"* %h - %s"',
-        { cwd: pluginPath }
-      )
+      const { stdout } = await execAsync('git log ORIG_HEAD..HEAD --pretty=format:"* %h - %s"', { cwd: pluginPath })
       if (!stdout) return null
       let logMsg = stdout.trim()
       if (logMsg.length > MAX_LOG_LENGTH) {

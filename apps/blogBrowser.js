@@ -74,14 +74,18 @@ export class BlogBrowser extends plugin {
 
       const messages = buildBlogListMessages({ ...blogPage, postList: items }, config)
 
-      setListCache(e, {
-        type: 'blog',
-        items: items,
-        pageState: {
-          blogName: blogPage.blogger.blogName,
-          offset: blogPage.offset
-        }
-      }, config.listCacheTTL || 600)
+      setListCache(
+        e,
+        {
+          type: 'blog',
+          items: items,
+          pageState: {
+            blogName: blogPage.blogger.blogName,
+            offset: blogPage.offset
+          }
+        },
+        config.listCacheTTL || 600
+      )
 
       await sendListResult(e, messages, config)
 
@@ -128,14 +132,18 @@ export class BlogBrowser extends plugin {
 
       const messages = buildBlogListMessages({ ...blogPage, postList: items }, config)
 
-      setListCache(e, {
-        type: 'blog',
-        items: items,
-        pageState: {
-          blogName: blogPage.blogger.blogName,
-          offset: blogPage.offset
-        }
-      }, config.listCacheTTL || 600)
+      setListCache(
+        e,
+        {
+          type: 'blog',
+          items: items,
+          pageState: {
+            blogName: blogPage.blogger.blogName,
+            offset: blogPage.offset
+          }
+        },
+        config.listCacheTTL || 600
+      )
 
       await sendListResult(e, messages, config)
 

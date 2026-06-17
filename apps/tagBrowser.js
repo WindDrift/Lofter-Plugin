@@ -5,8 +5,7 @@
 
 import plugin from '../../../lib/plugins/plugin.js'
 import { fetchTagPageByAPI } from '../lib/fetch/fetcher.js'
-import { parsePageData } from '../lib/parse/parser.js'
-import { extractTagPageInfo, parseAPIResponse } from '../lib/parse/tagParser.js'
+import { parseAPIResponse } from '../lib/parse/tagParser.js'
 import { setListCache, getListCache } from '../lib/fetch/listCache.js'
 import { buildTagListMessages } from '../lib/message/messageBuilder.js'
 import { sendListResult } from '../lib/message/sender.js'
@@ -103,16 +102,20 @@ export class TagBrowser extends plugin {
 
       const messages = buildTagListMessages({ tag, items: pageItems, page: 1, sort }, config)
 
-      setListCache(e, {
-        type: 'tag',
-        items: pageItems,
-        pageState: {
-          tag: tagName,
-          page: 1,
-          sort: sort,
-          offset: offset
-        }
-      }, config.listCacheTTL || 600)
+      setListCache(
+        e,
+        {
+          type: 'tag',
+          items: pageItems,
+          pageState: {
+            tag: tagName,
+            page: 1,
+            sort: sort,
+            offset: offset
+          }
+        },
+        config.listCacheTTL || 600
+      )
 
       await sendListResult(e, messages, config)
 
@@ -171,16 +174,20 @@ export class TagBrowser extends plugin {
 
       const messages = buildTagListMessages({ tag, items: pageItems, page: 1, sort }, config)
 
-      setListCache(e, {
-        type: 'tag',
-        items: pageItems,
-        pageState: {
-          tag: tagName,
-          page: 1,
-          sort: sort,
-          offset: offset
-        }
-      }, config.listCacheTTL || 600)
+      setListCache(
+        e,
+        {
+          type: 'tag',
+          items: pageItems,
+          pageState: {
+            tag: tagName,
+            page: 1,
+            sort: sort,
+            offset: offset
+          }
+        },
+        config.listCacheTTL || 600
+      )
 
       await sendListResult(e, messages, config)
 
@@ -227,16 +234,20 @@ export class TagBrowser extends plugin {
 
       const messages = buildTagListMessages({ tag: tagInfo, items: pageItems, page: nextPage, sort }, config)
 
-      setListCache(e, {
-        type: 'tag',
-        items: pageItems,
-        pageState: {
-          tag: tag,
-          page: nextPage,
-          sort: sort,
-          offset: newOffset
-        }
-      }, config.listCacheTTL || 600)
+      setListCache(
+        e,
+        {
+          type: 'tag',
+          items: pageItems,
+          pageState: {
+            tag: tag,
+            page: nextPage,
+            sort: sort,
+            offset: newOffset
+          }
+        },
+        config.listCacheTTL || 600
+      )
 
       await sendListResult(e, messages, config)
 
@@ -283,16 +294,20 @@ export class TagBrowser extends plugin {
 
       const messages = buildTagListMessages({ tag: tagInfo, items: pageItems, page: 1, sort }, config)
 
-      setListCache(e, {
-        type: 'tag',
-        items: pageItems,
-        pageState: {
-          tag: tag,
-          page: 1,
-          sort: sort,
-          offset: offset
-        }
-      }, config.listCacheTTL || 600)
+      setListCache(
+        e,
+        {
+          type: 'tag',
+          items: pageItems,
+          pageState: {
+            tag: tag,
+            page: 1,
+            sort: sort,
+            offset: offset
+          }
+        },
+        config.listCacheTTL || 600
+      )
 
       await sendListResult(e, messages, config)
 
