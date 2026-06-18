@@ -154,6 +154,35 @@ export const LOFTER_FIELDS = [
     order: 40
   },
   {
+    key: 'sendCollectionInfo',
+    type: 'switch',
+    default: true,
+    label: '发送合集信息',
+    bottomLabel: '是否发送博文所属合集名称、当前是第几篇',
+    group: '发送内容管理',
+    order: 45
+  },
+  {
+    key: 'sendCollectionList',
+    type: 'switch',
+    default: true,
+    label: '发送合集文章列表',
+    bottomLabel: '解析到合集博文后，是否列出同合集其他文章供用户选择解析',
+    group: '发送内容管理',
+    order: 46
+  },
+  {
+    key: 'collectionListLimit',
+    type: 'number',
+    default: 10,
+    min: 1,
+    max: 50,
+    label: '合集列表显示数量',
+    bottomLabel: '单次最多显示多少篇同合集文章',
+    group: '发送内容管理',
+    order: 47
+  },
+  {
     key: 'sendPostTitle',
     type: 'switch',
     default: true,

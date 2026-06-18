@@ -4,9 +4,8 @@
  */
 
 import plugin from '../../../lib/plugins/plugin.js'
-import { fetchPage } from '../lib/fetch/fetcher.js'
-import { parsePageData } from '../lib/parse/parser.js'
-import { extractBlogPageInfo } from '../lib/parse/blogParser.js'
+import { fetchBlogHomePageByAPI } from '../lib/fetch/fetcher.js'
+import { parseBlogHomePageResponse } from '../lib/parse/blogParser.js'
 import { setListCache, getListCache } from '../lib/fetch/listCache.js'
 import { buildBlogListMessages } from '../lib/message/messageBuilder.js'
 import { sendListResult } from '../lib/message/sender.js'
@@ -28,25 +27,63 @@ export class BlogBrowser extends plugin {
         {
           reg: '^#lofter下一页$',
           fnc: 'browseBlogNextPage'
+        },
+        {
+          reg: '^#lofter热门$',
+          fnc: 'browseBlogHot'
         }
       ]
     })
   }
 
   /**
-   * 从消息中提取博主名或主页 URL
+   * 从消息中提取博主名、主页 URL 和排序方式
    * @param {string} msg - 消息文本
-   * @returns {string|null} blogName
+   * @returns {{blogName: string|null, sort: string}|null}
    */
-  extractBlogName(msg) {
+  extractBlogInput(msg) {
     const match = msg.match(/^#lofter\s+(.+)$/)
     if (!match) return null
-    const input = match[1].trim()
 
-    const urlMatch = input.match(/^https?:\/\/([a-zA-Z0-9-]+)\.lofter\.com\/?$/i)
-    if (urlMatch) return urlMatch[1]
+    const parts = match[1].trim().split(/\s+/)
+    const first = parts[0].trim()
 
-    return input
+    const urlMatch = first.match(/^https?:\/\/([a-zA-Z0-9-]+)\.lofter\.com\/?$/i)
+    const blogName = urlMatch ? urlMatch[1] : first
+
+    const sort = this.resolveSort(parts[1])
+
+    return { blogName, sort }
+  }
+
+  /**
+   * 将用户输入的排序描述解析为内部排序标识
+   * @param {string|undefined} input
+   * @returns {string}
+   */
+  resolveSort(input) {
+    if (!input) return 'new'
+    const normalized = String(input).trim().toLowerCase()
+    if (normalized === 'hot' || normalized === '热度' || normalized === '热门') return 'hot'
+    return 'new'
+  }
+
+  /**
+   * 加载并返回博主主页数据
+   * @param {string} blogName
+   * @param {string} sort
+   * @param {number} offset
+   * @param {object} config
+   * @returns {Promise<{blogPage: BlogPageExtracted, items: BlogPagePost[]}>}
+   */
+  async loadBlogPage(blogName, sort, offset, config) {
+    const response = await fetchBlogHomePageByAPI(blogName, sort, offset, config)
+    const blogPage = parseBlogHomePageResponse(response, blogName)
+
+    const pageSize = config.blogListPageSize || 10
+    const items = blogPage.postList.slice(0, pageSize)
+
+    return { blogPage: { ...blogPage, postList: items }, items }
   }
 
   /**
@@ -58,29 +95,25 @@ export class BlogBrowser extends plugin {
     const config = loadConfig()
     if (!config) return false
 
-    const blogName = this.extractBlogName(e.msg)
-    if (!blogName) return false
+    const input = this.extractBlogInput(e.msg)
+    if (!input || !input.blogName) return false
 
-    logger.info(`[Lofter解析] 浏览博主主页: ${blogName}`)
-    const url = `https://${blogName}.lofter.com/`
+    const { blogName, sort } = input
+    logger.info(`[Lofter解析] 浏览博主主页: ${blogName}, 排序: ${sort}`)
 
     try {
-      const html = await fetchPage(url, config.timeout || 30, config)
-      const dataObj = parsePageData(html)
-      const blogPage = extractBlogPageInfo(dataObj, url)
+      const { blogPage, items } = await this.loadBlogPage(blogName, sort, 0, config)
 
-      const pageSize = config.blogListPageSize || 10
-      const items = blogPage.postList.slice(0, pageSize)
-
-      const messages = buildBlogListMessages({ ...blogPage, postList: items }, config)
+      const messages = buildBlogListMessages(blogPage, config, sort)
 
       setListCache(
         e,
         {
           type: 'blog',
-          items: items,
+          items,
           pageState: {
             blogName: blogPage.blogger.blogName,
+            sort,
             offset: blogPage.offset
           }
         },
@@ -113,32 +146,27 @@ export class BlogBrowser extends plugin {
       return false
     }
 
-    const { blogName, offset } = cache.pageState
+    const { blogName, sort = 'new', offset = 0 } = cache.pageState
     if (!offset || offset <= 0) {
       await e.reply('已经没有更多内容了')
       return false
     }
 
-    logger.info(`[Lofter解析] 博主主页下一页: ${blogName}, offset=${offset}`)
-    const url = `https://${blogName}.lofter.com/?offset=${offset}`
+    logger.info(`[Lofter解析] 博主主页下一页: ${blogName}, 排序: ${sort}, offset=${offset}`)
 
     try {
-      const html = await fetchPage(url, config.timeout || 30, config)
-      const dataObj = parsePageData(html)
-      const blogPage = extractBlogPageInfo(dataObj, url)
+      const { blogPage, items } = await this.loadBlogPage(blogName, sort, offset, config)
 
-      const pageSize = config.blogListPageSize || 10
-      const items = blogPage.postList.slice(0, pageSize)
-
-      const messages = buildBlogListMessages({ ...blogPage, postList: items }, config)
+      const messages = buildBlogListMessages(blogPage, config, sort)
 
       setListCache(
         e,
         {
           type: 'blog',
-          items: items,
+          items,
           pageState: {
             blogName: blogPage.blogger.blogName,
+            sort,
             offset: blogPage.offset
           }
         },
@@ -151,6 +179,56 @@ export class BlogBrowser extends plugin {
     } catch (err) {
       const { category, hint } = categorizeError(err)
       logger.error(`[Lofter解析] [${category}] 博主主页下一页失败: ${err.message}`)
+      await e.reply(hint)
+      return false
+    }
+  }
+
+  /**
+   * 博主主页切换热门排序
+   * @param {object} e - 消息事件对象
+   * @returns {Promise<boolean>}
+   */
+  async browseBlogHot(e) {
+    const config = loadConfig()
+    if (!config) return false
+
+    const cache = getListCache(e)
+    if (!cache || cache.type !== 'blog') {
+      await e.reply('请先使用 #lofter 博主名 浏览博主主页')
+      return false
+    }
+
+    const { blogName } = cache.pageState
+    const sort = 'hot'
+
+    logger.info(`[Lofter解析] 博主主页切换热门: ${blogName}`)
+
+    try {
+      const { blogPage, items } = await this.loadBlogPage(blogName, sort, 0, config)
+
+      const messages = buildBlogListMessages(blogPage, config, sort)
+
+      setListCache(
+        e,
+        {
+          type: 'blog',
+          items,
+          pageState: {
+            blogName: blogPage.blogger.blogName,
+            sort,
+            offset: blogPage.offset
+          }
+        },
+        config.listCacheTTL || 600
+      )
+
+      await sendListResult(e, messages, config)
+
+      return true
+    } catch (err) {
+      const { category, hint } = categorizeError(err)
+      logger.error(`[Lofter解析] [${category}] 博主主页热门切换失败: ${err.message}`)
       await e.reply(hint)
       return false
     }
