@@ -154,6 +154,15 @@ export const LOFTER_FIELDS = [
     order: 40
   },
   {
+    key: 'sendCollectionInfo',
+    type: 'switch',
+    default: true,
+    label: '发送合集信息',
+    bottomLabel: '是否发送博文所属合集名称、当前是第几篇',
+    group: '发送内容管理',
+    order: 45
+  },
+  {
     key: 'sendPostTitle',
     type: 'switch',
     default: true,
